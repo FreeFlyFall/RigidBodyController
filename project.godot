@@ -19,6 +19,11 @@ config/name="move"
 run/main_scene="res://Scenes/scene1.tscn"
 config/icon="res://icon.png"
 
+[display]
+
+window/size/borderless=true
+window/vsync/use_vsync=false
+
 [input]
 
 move_forward={
