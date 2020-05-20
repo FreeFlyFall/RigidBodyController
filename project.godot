@@ -55,7 +55,8 @@ jump={
 [physics]
 
 common/physics_fps=240
-3d/default_gravity=15.0
+3d/physics_engine="Bullet"
+3d/default_gravity=19.6
 
 [rendering]
 
