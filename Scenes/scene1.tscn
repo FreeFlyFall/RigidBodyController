@@ -47,14 +47,16 @@ friction = 0.0
 [node name="Spatial" type="Spatial"]
 
 [node name="Player" type="RigidBody" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.898591, 0 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136299, 0.781398, 0.00213349 )
 mode = 2
-mass = 0.12
+mass = 0.5
 physics_material_override = ExtResource( 2 )
 contacts_reported = 5
 contact_monitor = true
 can_sleep = false
 script = ExtResource( 1 )
+gravity = 9.8
+acceleration = 1.0
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]
 transform = Transform( 1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0 )

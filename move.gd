@@ -4,7 +4,7 @@ export var speed := 10
 export var gravity := 9.8
 export var jump: float = 1
 export var mouse_sensitivity := 0.05
-export var acceleration := 5
+export var acceleration: float = 1
 export var friction := 4
 var no_friction := 0
 var is_grounded :bool = false
@@ -36,7 +36,7 @@ func _process(_delta):
 			mouse_captured = false
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			mouse_captured = false
+			mouse_captured = true
 	
 	# Any input pressed -> remove rigidbody friction to prevent sticking (mimics move and slide)
 	if (is_any_movement_just_pressed()):
@@ -66,9 +66,8 @@ func is_all_movement_just_released():
 		 !Input.is_action_pressed("move_left"))
 
 #DevNotes:
-	# If jumped and lets go of space, apply slight downward force.
-	# If forced above max velocity(by impulse or collision), don't do velocity limiting during input except
-	 #in the axes on which the velocity is over the max speed.
+	# If forced above max velocity(by impulse or collision), don't do velocity limiting during input
+	 # ignore input in on the axes on which the velocity is over the speed limit
 	# FSM for Rigidbody controller?:
 		# Air(If not grounded) - (add small force in direction held)
 		# Idle(no input) - (Act against any current vel), or run timer and dec vel with it until stopped
@@ -112,14 +111,12 @@ func _integrate_forces(state):
 		move = (head.transform.basis.z + -head.transform.basis.x).normalized()
 	elif (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_left")): 
 		move = (-head.transform.basis.z + -head.transform.basis.x).normalized()
-		
 	# Handle z-axis inputs
 	elif Input.is_action_pressed("move_forward"):
 		# Normalized movement vector based on forward look direction (-z)
 		move = -head.transform.basis.z
 	elif Input.is_action_pressed("move_backward"):
 		move = head.transform.basis.z
-		
 	# Handle x-axis inputs
 	elif Input.is_action_pressed("move_right"):
 		# Normalized movement vector based on sideways direction (x)
@@ -129,27 +126,32 @@ func _integrate_forces(state):
 
 	move *= speed # Multiply the normalized move vector by speed
 	current = state.get_linear_velocity()
-	var limit = current # The current velocity to be limited
-
+	print(current)
 	### set x and z axes speed limit for normalized movement based on move direction ###
 	#	X-AXIS
 	# If the move vector is in the direction for the respective axis the player is moving along,
 	# and the current velocity is greater than the normalized limit for that direction,
-	if ((move.x > 0 and current.x > move.x) or
-	 (move.x < 0 and current.x < move.x) or
+	if ((move.x > 0.01 and current.x > move.x) or
+	 (move.x < -0.01 and current.x < move.x) or
 	 # or if the current velocity is in the opposite direction of the move vector for this axis,
-	 (current.x < 0 and move.x > 0) or
-	 (current.x > 0 and move.x < 0)):
+	 (current.x < -0.01 and move.x > 0.01) or
+	 (current.x > 0.01 and move.x < -0.01)):
 	 # set the velocity limit according to the move direction
-		limit.x = move.x
+		current.x = move.x
 	#   Z-AXIS 
-	if ((move.z > 0 and current.z > move.z) or 
-	 (move.z < 0 and current.z < move.z) or
-	 (current.z < 0 and move.z > 0) or
-	 (current.z > 0 and move.z < 0)):
-		limit.z = move.z
-	
+	if ((move.z > 0.01 and current.z > move.z) or 
+	 (move.z < -0.01 and current.z < move.z) or
+	 (current.z < -0.01 and move.z > 0.01) or
+	 (current.z > 0.01 and move.z < -0.01)):
+		current.z = move.z
+
 	# If velocity on an axis was over the limit, velocity on that axis will be set to the normalized limit
-	state.set_linear_velocity(limit)
-	# Add the intended force
-	state.add_central_force(move * acceleration)
+	state.set_linear_velocity(current)
+
+	# Set the final movement vector
+	move *= acceleration
+	# If the current velocity is less than the speed limit, add the force to accelerate the player
+	if (((move.x < 0 and (current.x > move.x)) or (move.x > 0 and (current.x < move.x))) or
+	 ((move.z < 0 and (current.z > move.z)) or (move.z > 0 and (current.z < move.z)))):
+		# Add the intended force
+		state.add_central_force(move)
