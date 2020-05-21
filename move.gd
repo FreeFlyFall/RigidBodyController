@@ -4,11 +4,12 @@ var speed := 10
 var gravity := 9.8
 var jump := 1
 var mouse_sensitivity := 0.05
-var acceleration := 1
+var acceleration := 5
 var rough_friction := 4
-var no_friction := 1
+var no_friction := 0
+var is_grounded :bool = false
 
-var direction: Vector3 = Vector3()
+var direction := Vector3()
 var mouse_captured: bool
 
 onready var head = $Head
@@ -27,7 +28,16 @@ func _input(event):
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)	
 	mouse_captured = true
-
+func _process(_delta):
+	# Capture/release mouse on 'Esc' press
+	if Input.is_action_just_pressed("ui_cancel"):
+		if (mouse_captured == true):
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+			mouse_captured = false
+		else:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			mouse_captured = false
+			
 # Return true if any of the movement keys were just pressed
 func is_any_movement_just_pressed():
 	return (Input.is_action_just_pressed("move_forward") or
@@ -45,17 +55,7 @@ func is_all_movement_just_released():
 		 !Input.is_action_pressed("move_backward") and
 		 !Input.is_action_pressed("move_right") and
 		 !Input.is_action_pressed("move_left"))
-	
-func _process(_delta):
-	# Capture/release mouse on 'Esc' press
-	if Input.is_action_just_pressed("ui_cancel"):
-		if (mouse_captured == true):
-			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-			mouse_captured = false
-		else:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			mouse_captured = false
-			
+
 	# Any input pressed -> remove rigidbody friction to prevent sticking (mimics move and slide)
 	if (is_any_movement_just_pressed()):
 		player_physics_material.rough = false
@@ -76,19 +76,29 @@ func _process(_delta):
 		# AtSpeed(grounded, witht input, at speed limit) - (SetVelocity state if over velocity limit and direction held)
 	# remove friction in the air as well. On becoming grounded, scale it up over a fraction of a second to allow a small slide.
 	 # I don't think I can work around that with the given physics
+	# Looks like while fixing the last bug that caused edge case drifting, I caused acceleration bugs.
+	 # I suppose the next plan is to make the force grow over a time which is based on the degree of vector change.
 
-
-func _integrate_forces(state):	
-	# Before continuing, check an is_grounded raycast
-		# if not grounded, use air-controls
-	
+func _integrate_forces(state):
 	# Handle jump
+	is_grounded = false
+	# If the player body is contacting something
+	if (state.get_contact_count() > 0):
+		# Get the normal of the point of contact
+		var contact_normal = state.get_contact_local_normal(0)
+		# If the contact normal is facing up, the player is grounded
+		if (contact_normal.y > 0):
+			is_grounded = true
+	# If the player tried to jump, and is grounded, apply a force vector times by the jump multiplier
 	if (Input.is_action_just_pressed("jump")):
-		state.apply_central_impulse(Vector3(0,1,0)*jump)
-	
+		if(is_grounded):
+			state.apply_central_impulse(Vector3(0,1,0) * jump)
+
+	# Initialize the movement vector and get the current velocity of the player
 	var move = Vector3()
 	var current = state.get_linear_velocity()
 
+## if not grounded, use air-controls
 	# Handle diagonal inputs
 	if (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_right")): 
 		# Add the closest 2 cardinal x/z vectors and normalize the result
@@ -127,13 +137,13 @@ func _integrate_forces(state):
 	 # or if the current velocity is in the opposite direction of the move vector for this axis,
 	 (current.x < 0 and move.x > 0) or
 	 (current.x > 0 and move.x < 0)):
-	 # set the velocity limit according to the look direction
+	 # set the velocity limit according to the move direction
 		limit.x = move.x
 	#   Z-AXIS 
 	if ((move.z > 0 and current.z > move.z) or 
 	 (move.z < 0 and current.z < move.z) or
 	 (current.z < 0 and move.z > 0) or
-	 (current.z > 0 and move.x < 0)):
+	 (current.z > 0 and move.z < 0)):
 		limit.z = move.z
 	
 	# If an axis was over the limit, it will be set to the limit in the limit variable

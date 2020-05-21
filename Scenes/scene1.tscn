@@ -47,10 +47,12 @@ friction = 0.0
 [node name="Spatial" type="Spatial"]
 
 [node name="Player" type="RigidBody" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.77279, 0 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.898591, 0 )
 mode = 2
 mass = 0.12
 physics_material_override = ExtResource( 2 )
+contacts_reported = 5
+contact_monitor = true
 can_sleep = false
 script = ExtResource( 1 )
 
