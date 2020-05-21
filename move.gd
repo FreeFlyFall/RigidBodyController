@@ -1,11 +1,11 @@
 extends Spatial
 
-var speed := 10
-var gravity := 9.8
-var jump := 1
-var mouse_sensitivity := 0.05
-var acceleration := 5
-var rough_friction := 4
+export var speed := 10
+export var gravity := 9.8
+export var jump: float = 1
+export var mouse_sensitivity := 0.05
+export var acceleration := 5
+export var friction := 4
 var no_friction := 0
 var is_grounded :bool = false
 
@@ -13,7 +13,7 @@ var direction := Vector3()
 var mouse_captured: bool
 
 onready var head = $Head
-onready var rot = $Head/Rot
+onready var yaw = $Head/Yaw
 
 var player_physics_material = load("res://Physics/player.tres")
 
@@ -21,8 +21,8 @@ var player_physics_material = load("res://Physics/player.tres")
 func _input(event):
 	if event is InputEventMouseMotion:
 		head.rotate_y(deg2rad(-event.relative.x * mouse_sensitivity))
-		rot.rotate_x(deg2rad(-event.relative.y * mouse_sensitivity))
-		rot.rotation.x = clamp(rot.rotation.x, deg2rad(-90), deg2rad(90))
+		yaw.rotate_x(deg2rad(-event.relative.y * mouse_sensitivity))
+		yaw.rotation.x = clamp(yaw.rotation.x, deg2rad(-90), deg2rad(90))
 
 # Capture mouse on load
 func _ready():
@@ -45,7 +45,7 @@ func _process(_delta):
 	# All input released -> change rigidbody physics material to high friction
 	elif (is_all_movement_just_released()):
 		player_physics_material.rough = true
-		player_physics_material.friction = rough_friction
+		player_physics_material.friction = friction
 	
 # Return true if any of the movement keys were just pressed
 func is_any_movement_just_pressed():
@@ -93,6 +93,9 @@ func _integrate_forces(state):
 	if (Input.is_action_just_pressed("jump")):
 		if(is_grounded):
 			state.apply_central_impulse(Vector3(0,1,0) * jump)
+	if (not is_grounded) and Input.is_action_just_released("jump"):
+		var jump_fraction = jump / 5
+		state.apply_central_impulse(Vector3(0,-1,0) * jump_fraction)
 
 	# Initialize the movement vector and get the current velocity of the player
 	var move = Vector3()
@@ -112,14 +115,14 @@ func _integrate_forces(state):
 		
 	# Handle z-axis inputs
 	elif Input.is_action_pressed("move_forward"):
-		# Normalized movement vector based on forward look direction (-z), multiplied by speed
+		# Normalized movement vector based on forward look direction (-z)
 		move = -head.transform.basis.z
 	elif Input.is_action_pressed("move_backward"):
 		move = head.transform.basis.z
 		
 	# Handle x-axis inputs
 	elif Input.is_action_pressed("move_right"):
-		# Normalized movement vector based on sideways direction (x), multiplied by speed
+		# Normalized movement vector based on sideways direction (x)
 		move = head.transform.basis.x
 	elif Input.is_action_pressed("move_left"):
 		move = -head.transform.basis.x
@@ -130,7 +133,7 @@ func _integrate_forces(state):
 
 	### set x and z axes speed limit for normalized movement based on move direction ###
 	#	X-AXIS
-	# If the move vector is in the direction for the respective axis the player is moving,
+	# If the move vector is in the direction for the respective axis the player is moving along,
 	# and the current velocity is greater than the normalized limit for that direction,
 	if ((move.x > 0 and current.x > move.x) or
 	 (move.x < 0 and current.x < move.x) or

@@ -68,9 +68,9 @@ material/0 = null
 [node name="Head" type="Spatial" parent="Player"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 )
 
-[node name="Rot" type="Spatial" parent="Player/Head"]
+[node name="Yaw" type="Spatial" parent="Player/Head"]
 
-[node name="Camera" type="Camera" parent="Player/Head/Rot"]
+[node name="Camera" type="Camera" parent="Player/Head/Yaw"]
 far = 500.0
 
 [node name="FloorStatic" type="MeshInstance" parent="."]
