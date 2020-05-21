@@ -66,16 +66,16 @@ func is_all_movement_just_released():
 		 !Input.is_action_pressed("move_left"))
 
 #DevNotes:
-	# If jumped and lets go of space, apply slight downward force
+	# If jumped and lets go of space, apply slight downward force.
 	# If forced above max velocity(by impulse or collision), don't do velocity limiting during input except
-	 #in the axes on which the velocity is over the max speed
+	 #in the axes on which the velocity is over the max speed.
 	# FSM for Rigidbody controller?:
 		# Air(If not grounded) - (add small force in direction held)
 		# Idle(no input) - (Act against any current vel), or run timer and dec vel with it until stopped
-		# Accel(input) - (Force towards direction),
+		# Accel(input) - (Force towards direction)
 		# AtSpeed(grounded, witht input, at speed limit) - (SetVelocity state if over velocity limit and direction held)
 	# remove friction in the air as well. On becoming grounded, scale it up over a fraction of a second to allow a small slide.
-	 # I don't think I can work around that with the given physics
+	 # I don't think I can work around that with the given physics.
 	# Looks like while fixing the last bug that caused edge case drifting, I caused acceleration bugs.
 	 # I suppose the next plan is to make the force grow over a time which is based on the degree of vector change.
 
@@ -89,7 +89,7 @@ func _integrate_forces(state):
 		# If the contact normal is facing up, the player is grounded
 		if (contact_normal.y > 0):
 			is_grounded = true
-	# If the player tried to jump, and is grounded, apply a force vector times by the jump multiplier
+	# If the player tried to jump, and is grounded, apply a force vector times the jump multiplier
 	if (Input.is_action_just_pressed("jump")):
 		if(is_grounded):
 			state.apply_central_impulse(Vector3(0,1,0) * jump)
@@ -146,7 +146,7 @@ func _integrate_forces(state):
 	 (current.z > 0 and move.z < 0)):
 		limit.z = move.z
 	
-	# If an axis was over the limit, it will be set to the limit in the limit variable
+	# If velocity on an axis was over the limit, velocity on that axis will be set to the normalized limit
 	state.set_linear_velocity(limit)
 	# Add the intended force
 	state.add_central_force(move * acceleration)
