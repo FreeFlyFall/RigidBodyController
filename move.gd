@@ -37,7 +37,16 @@ func _process(_delta):
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			mouse_captured = false
-			
+	
+	# Any input pressed -> remove rigidbody friction to prevent sticking (mimics move and slide)
+	if (is_any_movement_just_pressed()):
+		player_physics_material.rough = false
+		player_physics_material.friction = no_friction
+	# All input released -> change rigidbody physics material to high friction
+	elif (is_all_movement_just_released()):
+		player_physics_material.rough = true
+		player_physics_material.friction = rough_friction
+	
 # Return true if any of the movement keys were just pressed
 func is_any_movement_just_pressed():
 	return (Input.is_action_just_pressed("move_forward") or
@@ -56,15 +65,6 @@ func is_all_movement_just_released():
 		 !Input.is_action_pressed("move_right") and
 		 !Input.is_action_pressed("move_left"))
 
-	# Any input pressed -> remove rigidbody friction to prevent sticking (mimics move and slide)
-	if (is_any_movement_just_pressed()):
-		player_physics_material.rough = false
-		player_physics_material.friction = no_friction
-	# All input released -> change rigidbody physics material to high friction
-	elif (is_all_movement_just_released()):
-		player_physics_material.rough = true
-		player_physics_material.friction = rough_friction
-			
 #DevNotes:
 	# If jumped and lets go of space, apply slight downward force
 	# If forced above max velocity(by impulse or collision), don't do velocity limiting during input except
