@@ -1,15 +1,14 @@
 extends Spatial
 
-export var speed := 10
-export var gravity := 9.8
-export var jump: float = 1
-export var mouse_sensitivity := 0.05
-export var acceleration: float = 1
-export var friction := 4
-var no_friction := 0
-var is_grounded :bool = false
+var speed := 100
+export var jump: float = 10
+export var mouse_sensitivity: = 0.05
+#export var friction: = 50
+var is_grounded: bool = false
+var speed_limit = 10
+var friction = 5
 
-var direction := Vector3()
+var direction: = Vector3()
 var mouse_captured: bool
 
 onready var head = $Head
@@ -38,15 +37,6 @@ func _process(_delta):
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			mouse_captured = true
 	
-	# Any input pressed -> remove rigidbody friction to prevent sticking (mimics move and slide)
-	if (is_any_movement_just_pressed()):
-		player_physics_material.rough = false
-		player_physics_material.friction = no_friction
-	# All input released -> change rigidbody physics material to high friction
-	elif (is_all_movement_just_released()):
-		player_physics_material.rough = true
-		player_physics_material.friction = friction
-	
 # Return true if any of the movement keys were just pressed
 func is_any_movement_just_pressed():
 	return (Input.is_action_just_pressed("move_forward") or
@@ -66,6 +56,8 @@ func is_all_movement_just_released():
 		 !Input.is_action_pressed("move_left"))
 
 #DevNotes:
+	# Change movement vector to be perpendicular to the contact slope
+	# Change linear damp while in air
 	# If forced above max velocity(by impulse or collision), don't do velocity limiting during input
 	 # ignore input in on the axes on which the velocity is over the speed limit
 	# FSM for Rigidbody controller?:
@@ -74,32 +66,35 @@ func is_all_movement_just_released():
 		# Accel(input) - (Force towards direction)
 		# AtSpeed(grounded, witht input, at speed limit) - (SetVelocity state if over velocity limit and direction held)
 	# remove friction in the air as well. On becoming grounded, scale it up over a fraction of a second to allow a small slide.
-	 # I don't think I can work around that with the given physics.
-	# Looks like while fixing the last bug that caused edge case drifting, I caused acceleration bugs.
-	 # I suppose the next plan is to make the force grow over a time which is based on the degree of vector change.
 
 func _integrate_forces(state):
-	# Handle jump
+	# Set is_grounded
 	is_grounded = false
 	# If the player body is contacting something
 	if (state.get_contact_count() > 0):
 		# Get the normal of the point of contact
 		var contact_normal = state.get_contact_local_normal(0)
 		# If the contact normal is facing up, the player is grounded
-		if (contact_normal.y > 0):
+		if (contact_normal.y > 0.01):
 			is_grounded = true
+			player_physics_material.rough = true
+			player_physics_material.friction = 5 #friction
+			#self.linear_damp = 5
+		else:
+			player_physics_material.rough = false
+			player_physics_material.friction = 0
 	# If the player tried to jump, and is grounded, apply a force vector times the jump multiplier
 	if (Input.is_action_just_pressed("jump")):
 		if(is_grounded):
 			state.apply_central_impulse(Vector3(0,1,0) * jump)
+			#self.linear_damp = -1
 	if (not is_grounded) and Input.is_action_just_released("jump"):
 		var jump_fraction = jump / 5
 		state.apply_central_impulse(Vector3(0,-1,0) * jump_fraction)
 
 	# Initialize the movement vector and get the current velocity of the player
 	var move = Vector3()
-	var current = state.get_linear_velocity()
-
+	
 ## if not grounded, use air-controls
 	# Handle diagonal inputs
 	if (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_right")): 
@@ -124,34 +119,17 @@ func _integrate_forces(state):
 	elif Input.is_action_pressed("move_left"):
 		move = -head.transform.basis.x
 
-	move *= speed # Multiply the normalized move vector by speed
-	current = state.get_linear_velocity()
-	print(current)
-	### set x and z axes speed limit for normalized movement based on move direction ###
-	#	X-AXIS
-	# If the move vector is in the direction for the respective axis the player is moving along,
-	# and the current velocity is greater than the normalized limit for that direction,
-	if ((move.x > 0.01 and current.x > move.x) or
-	 (move.x < -0.01 and current.x < move.x) or
-	 # or if the current velocity is in the opposite direction of the move vector for this axis,
-	 (current.x < -0.01 and move.x > 0.01) or
-	 (current.x > 0.01 and move.x < -0.01)):
-	 # set the velocity limit according to the move direction
-		current.x = move.x
-	#   Z-AXIS 
-	if ((move.z > 0.01 and current.z > move.z) or 
-	 (move.z < -0.01 and current.z < move.z) or
-	 (current.z < -0.01 and move.z > 0.01) or
-	 (current.z > 0.01 and move.z < -0.01)):
-		current.z = move.z
-
-	# If velocity on an axis was over the limit, velocity on that axis will be set to the normalized limit
-	state.set_linear_velocity(current)
-
-	# Set the final movement vector
-	move *= acceleration
-	# If the current velocity is less than the speed limit, add the force to accelerate the player
-	if (((move.x < 0 and (current.x > move.x)) or (move.x > 0 and (current.x < move.x))) or
-	 ((move.z < 0 and (current.z > move.z)) or (move.z > 0 and (current.z < move.z)))):
-		# Add the intended force
-		state.add_central_force(move)
+	if (is_grounded):
+		#self.linear_damp = -1 # Use default linear damp
+		# If the player is grounded and moving, limit the velocity to the speed limit
+		move *= speed
+		var vel = state.get_linear_velocity()
+		var nvel = vel.normalized() # The normalized player velocity
+		# If the players velocity doesn't exceed the normalized movement vector at the speed limit,
+		# add the force towards the movement vector
+		if ((nvel.x > 0 and vel.x < nvel.x*speed_limit) or (nvel.x < 0 and vel.x > nvel.x*speed_limit)
+		or (nvel.z > 0 and vel.z < nvel.z*speed_limit) or (nvel.z < 0 and vel.z > nvel.z*speed_limit)):
+			state.add_central_force(move)
+	else:
+		# Accept input which is sideways and backward from the velocity vector if above the speed limit and reduce the force
+		state.add_central_force(move/10)
