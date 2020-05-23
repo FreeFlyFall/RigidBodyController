@@ -1,8 +1,9 @@
-[gd_scene load_steps=19 format=2]
+[gd_scene load_steps=20 format=2]
 
 [ext_resource path="res://move.gd" type="Script" id=1]
 [ext_resource path="res://Physics/player.tres" type="PhysicsMaterial" id=2]
 [ext_resource path="res://Scenes/cuberb.gd" type="Script" id=3]
+[ext_resource path="res://Scripts/draw.gd" type="Script" id=4]
 
 [sub_resource type="CapsuleShape" id=1]
 radius = 0.5
@@ -45,9 +46,13 @@ friction = 0.0
 [sub_resource type="CubeMesh" id=15]
 
 [node name="Spatial" type="Spatial"]
+script = ExtResource( 4 )
+
+[node name="draw" type="ImmediateGeometry" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.21883, 0 )
 
 [node name="Player" type="RigidBody" parent="."]
-transform = Transform( 1.03251, 0, 0, 0, 1.03251, 0, 0, 0, 1.03251, -1.35809, 1.19294, 5.49725 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.28135, 0 )
 mode = 2
 mass = 0.612245
 physics_material_override = ExtResource( 2 )
