@@ -54,7 +54,7 @@ transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.21883, 0 )
 [node name="Player" type="RigidBody" parent="."]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.28135, 0 )
 mode = 2
-mass = 0.612245
+mass = 0.0102041
 physics_material_override = ExtResource( 2 )
 contacts_reported = 5
 can_sleep = false
