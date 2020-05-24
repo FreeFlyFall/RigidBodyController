@@ -1,12 +1,14 @@
 extends Spatial
 
 # Integrate forces vars
-var speed := 100
+var speed := 2
 export var jump: float = 5
 export var mouse_sensitivity: = 0.05
 var speed_limit = 10
 var player_physics_material = load("res://Physics/player.tres")
 var friction = player_physics_material.friction
+var is_landing: bool = false
+var slant: Vector3
 
 # Process vars
 onready var head = $Head
@@ -36,10 +38,11 @@ func _physics_process(_delta):
 	var direct_state = get_world().direct_space_state
 	raycast_list.clear()
 	is_grounded = false
-	# Create 8 raycasts around the player capsule
-	# They're instantiated towards the edge of the radius and shoot from just
-	# below the capsule, to just below the bottom bound of the capsule
-	for i in 8:
+	# Create 9 raycasts around the player capsule
+	# They begin towards the edge of the radius and shoot from just
+	# below the capsule, to just below the bottom bound of the capsule,
+	# with one in the center
+	for i in 9:
 		# Get the starting location
 		var loc = self.translation
 		# subtract a distance to get below the capsule
@@ -57,7 +60,7 @@ func _physics_process(_delta):
 				loc.x -= cv_dist # W
 			# Ordinal vectors
 			4:
-				loc.z -= ov_dist # Ne
+				loc.z -= ov_dist # NE
 				loc.x += ov_dist
 			5:
 				loc.z += ov_dist # SE
@@ -75,11 +78,10 @@ func _physics_process(_delta):
 		raycast_list.append([loc,loc2])
 	# Check each raycast for collision
 	for array in raycast_list:
-		var collision = direct_state.intersect_ray(array[0],array[1])
+		var collision = direct_state.intersect_ray(array[0],array[1],[self])
 		if collision:
 			#print(String(self.translation)+' '+String(collision.position))
 			is_grounded = true
-			print()
 
 # Capture mouse on load
 func _ready():
@@ -114,52 +116,49 @@ func is_all_movement_just_released():
 		 !Input.is_action_pressed("move_left"))
 
 #DevNotes:
-	# Change movement vector to be perpendicular to the contact slope
+	# Change movement vector to be perpendicular to the contact slope if is not pinned
 	## # Change linear damp while in air?
 	# If forced above max velocity(by impulse or collision), don't do velocity limiting during input
 	 # ignore input for the direction in which the velocity is over the speed limit
-	# FSM for Rigidbody controller?:
-		# Air(If not grounded) - (add small force in direction held)
-		# Idle(no input)
-		# Accel(input) - (Force towards direction)
-		# AtSpeed(grounded, with input, at speed limit)
 	# Remove friction in the air as well. On becoming grounded, scale it up over a fraction of a second to allow a small slide
-	# Set is_grounded based on collision again, and use one raycast at the middle bottom. # Stuck on cube
-	 # I think either will work, but a combination of collision normals and
-	 # raycast will be more stable for complex shapes
 	# If not grounded, use air-controls
+	# Add crouch. Crouch during jump while space is held to make landing accurately easier.
 
 func _integrate_forces(state):
-	### If the player collision produces a negative normal, remove friction to prevent sticking
-	var is_pinned = false
-	# If the player body is contacting something
+	### If the player collision produces a negative normal, remove friction to prevent sticking	var
+	# If the player body is contacting something,
 	if (state.get_contact_count() > 0):
 		var contact_normal_array = []
-		# Get the normal of the point of contact
+		# get the normal of the point of contact
 		for i in state.get_contact_count():
-			contact_normal_array.insert(i, state.get_contact_local_normal(i)) 
+			contact_normal_array.insert(i, state.get_contact_local_normal(i))
 			# If the contact normal is facing up, the player is grounded
-			# if (Input.is_action_pressed('move_forward')):
-			# 	print(String(i)+' '+String(contact_normal_array[i]))
-			if (contact_normal_array[i].y < 0.5):
-				is_pinned = true
+#			if (Input.is_action_pressed('move_forward')):
+#				print(String(i)+' '+String(contact_normal_array[i]))
+			slant = contact_normal_array[i]
+			if (slant.y >= 0.5):
+				is_grounded = true
 		# If the player isn't against a wall or something tilting toward them, use normal friction, else turn it off
-		if (not is_pinned):
+		if (is_grounded):
 			player_physics_material.rough = true
 			player_physics_material.friction = friction
 		else:
 			player_physics_material.rough = false
 			player_physics_material.friction = 0
 
-	### If the player tried to jump, and is grounded, apply an upward force times the jump multiplier
+	# Handle jumping
+	# If the player tried to jump, and is grounded, apply an upward force times the jump multiplier
+	# Apply a downward force once if the player lets go of jump to assist with landing
 	if (Input.is_action_just_pressed("jump")):
-		print(is_grounded)
 		if (is_grounded):
 			state.apply_central_impulse(Vector3(0,1,0) * jump)
+			is_landing = false
 			#self.linear_damp = -1
 	if (not is_grounded) and Input.is_action_just_released("jump"):
-		var jump_fraction = jump / 5
-		state.apply_central_impulse(Vector3(0,-1,0) * jump_fraction)
+		if (is_landing == false):
+			var jump_fraction = jump / 5
+			state.apply_central_impulse(Vector3(0,-1,0) * jump_fraction)
+			is_landing = true
 
 	# Initialize the movement vector
 	var move = Vector3()
@@ -186,18 +185,22 @@ func _integrate_forces(state):
 		move = head.transform.basis.x
 	elif Input.is_action_pressed("move_left"):
 		move = -head.transform.basis.x
-
+	
+	#print(String(is_grounded)+String(OS.get_time()))
 	if (is_grounded):
 		#self.linear_damp = -1 # Use default linear damp
 		# If the player is grounded and moving, limit the velocity to the speed limit
-		move *= speed
 		var vel = state.get_linear_velocity()
 		var nvel = vel.normalized() # The normalized player velocity
 		# If the players velocity doesn't exceed the normalized movement vector at the speed limit,
 		# add the force towards the movement vector
-		if ((nvel.x > 0 and vel.x < nvel.x*speed_limit) or (nvel.x < 0 and vel.x > nvel.x*speed_limit)
-		or (nvel.z > 0 and vel.z < nvel.z*speed_limit) or (nvel.z < 0 and vel.z > nvel.z*speed_limit)):
-			state.add_central_force(move)
+		#print('vel: '+String(vel)+' vnel: '+String(nvel))
+		if ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
+		(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
+		(nvel.x == 0 or nvel.z == 0)):
+			#print('force added'+String(OS.get_time()))
+			move = move.cross(slant).cross(slant).cross(slant).cross(slant)
+			state.add_central_force(move*speed)
 	else:
 		# Accept input which is sideways and backward from the velocity vector if above the speed limit and reduce the force
 		state.add_central_force(move*5)
