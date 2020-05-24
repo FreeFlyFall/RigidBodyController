@@ -8,7 +8,7 @@ var speed_limit = 10
 var player_physics_material = load("res://Physics/player.tres")
 var friction = player_physics_material.friction
 var is_landing: bool = false
-var slant: Vector3
+var slope_normal: Vector3
 
 # Process vars
 onready var head = $Head
@@ -135,8 +135,8 @@ func _integrate_forces(state):
 			# If the contact normal is facing up, the player is grounded
 #			if (Input.is_action_pressed('move_forward')):
 #				print(String(i)+' '+String(contact_normal_array[i]))
-			slant = contact_normal_array[i]
-			if (slant.y >= 0.5):
+			slope_normal = contact_normal_array[i]
+			if (slope_normal.y >= 0.5):
 				is_grounded = true
 		# If the player isn't against a wall or something tilting toward them, use normal friction, else turn it off
 		if (is_grounded):
@@ -199,7 +199,7 @@ func _integrate_forces(state):
 		(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
 		(nvel.x == 0 or nvel.z == 0)):
 			#print('force added'+String(OS.get_time()))
-			move = move.cross(slant).cross(slant).cross(slant).cross(slant)
+			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
 			state.add_central_force(move*speed)
 	else:
 		# Accept input which is sideways and backward from the velocity vector if above the speed limit and reduce the force
