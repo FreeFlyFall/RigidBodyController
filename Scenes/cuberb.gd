@@ -9,4 +9,4 @@ func _integrate_forces(state):
 	if (once == false):
 		once = true
 		var direction = Vector3(0,0,1)
-		state.apply_central_impulse(direction*100)
+		state.apply_central_impulse(direction*250)

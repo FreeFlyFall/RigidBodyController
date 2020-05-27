@@ -3,21 +3,15 @@ extends Spatial
 # Use the GodotPhysics physics engine
 
 #DevNotes:
-	# If forced above max velocity(by impulse or collision), don't do velocity limiting during input
-	 # ignore input for the direction in which the velocity is over the speed limit
-
 	# Remove friction in the air as well. On becoming grounded, scale it up over a fraction of a second to allow a small slide
-
-	# If not grounded, use air-controls
 
 	# Add crouch. Crouch during jump while space is held to make landing accurately easier.
 
 	# Fix input to cancel opposing inputs instead of one overriding.
 
-	# Limit jump based on slope normal
+	# Limit jump based on slope normal?
 	 # upward slope scales to less force
 	 # downward slope scales to more force
-
 
 ### Integrate forces vars
 export var speed := 100 # 100 # Player speed
@@ -193,77 +187,51 @@ func _integrate_forces(state):
 
 	var vel = state.get_linear_velocity()
 	var nvel = vel.normalized() # The normalized player velocity
-	## Ground controls
-	if (is_grounded):		
-		# If they player is below the speed limit, accept a force in any direction
-		if ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
-		(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
-		(nvel.x == 0 or nvel.z == 0)):
-			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
-			state.add_central_force(move*speed)
-		# If the player's speed is above the limit, and the movement vector
-		# faces away from the velocity vector, add the force
-		elif (nvel.dot(move) < 0):
-			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
-			state.add_central_force(move*speed)
-		# If the player's speed is above the limit, and the movement vector
-		# is facing the velocity, add a force perpendicular to the velocity;
-		# the force is to the left if the angle between the the velocity and
-		# movement vectors is negative, and to the right if it's positive.
-		else:
-			var move2 = Vector2(move.x, move.z)
-			var nvel2 = Vector2(nvel.x, nvel.z)
-			# Get the angle between the velocity and current movement vector
-			var angle = nvel2.angle_to(move2)
-			# Convert it to degrees
-			var theta = rad2deg(angle)
 
-			# If the angle is to the right of the velocity
-			if (theta > 0 and theta < 90):
-				# Take the cross product between the velocity and the y-axis
-				# to get the vector to the right of the velocity
-				move = nvel.cross(head.transform.basis.y)
-				move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
-			# If the angle is to the left of the velocity
-			elif(theta < 0 and theta > -90):
-				# Take the cross product between the y-axis and the velocity
-				# to get the vector to the left of the velocity
-				move = head.transform.basis.y.cross(nvel)
-				move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
+	
+	# If they player is below the speed limit, accept a force in any direction
+	if ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
+	(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
+	(nvel.x == 0 or nvel.z == 0)):
+		if (is_grounded):
+			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
 			state.add_central_force(move*speed)
-	## Air controls
+		else:
+			state.add_central_force(move*air_control)
+	# If the player's speed is above the limit, and the movement vector
+	# faces away from the velocity vector, add the force
+	elif (nvel.dot(move) < 0):
+		if (is_grounded):
+			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
+			state.add_central_force(move*speed)
+		else:
+			state.add_central_force(move*air_control)
+	# If the player's speed is above the limit, and the movement vector
+	# is facing the velocity, add a force perpendicular to the velocity;
+	# the force is to the left if the angle between the the velocity and
+	# movement vectors is negative, and to the right if it's positive.
 	else:
-		# If they player is below the speed limit, accept a force in any direction
-		if ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
-		(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
-		(nvel.x == 0 or nvel.z == 0)):
-			state.add_central_force(move*air_control)
-		# If the player's speed is above the limit, and the movement vector
-		# faces away from the velocity vector, add the force
-		elif (nvel.dot(move) < 0):
-			state.add_central_force(move*air_control)
-		# If the player's speed is above the limit, and the movement vector
-		# is facing the velocity, add a force perpendicular to the velocity;
-		# the force is to the left if the angle between the the velocity and
-		# movement vectors is negative, and to the right if it's positive.
-		else:
-			var move2 = Vector2(move.x, move.z)
-			var nvel2 = Vector2(nvel.x, nvel.z)
-			# Get the angle between the velocity and current movement vector
-			var angle = nvel2.angle_to(move2)
-			# Convert it to degrees
-			var theta = rad2deg(angle)
+		var move2 = Vector2(move.x, move.z)
+		var nvel2 = Vector2(nvel.x, nvel.z)
+		# Get the angle between the velocity and current movement vector
+		var angle = nvel2.angle_to(move2)
+		# Convert it to degrees
+		var theta = rad2deg(angle)
 
-			# If the angle is to the right of the velocity
-			if (theta > 0 and theta < 90):
-				# Take the cross product between the velocity and the y-axis
-				# to get the vector to the right of the velocity
-				move = nvel.cross(head.transform.basis.y)
-			# If the angle is to the left of the velocity
-			elif(theta < 0 and theta > -90):
-				# Take the cross product between the y-axis and the velocity
-				# to get the vector to the left of the velocity
-				move = head.transform.basis.y.cross(nvel)
+		# If the angle is to the right of the velocity
+		if (theta > 0 and theta < 90):
+			# Take the cross product between the velocity and the y-axis
+			# to get the vector to the right of the velocity
+			move = nvel.cross(head.transform.basis.y)
+		# If the angle is to the left of the velocity
+		elif(theta < 0 and theta > -90):
+			# Take the cross product between the y-axis and the velocity
+			# to get the vector to the left of the velocity
+			move = head.transform.basis.y.cross(nvel)
+		if (is_grounded):
+			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
+			state.add_central_force(move*speed)
+		else:
 			state.add_central_force(move*air_control)
 
 	# Shotgun jump test
