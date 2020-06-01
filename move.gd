@@ -2,23 +2,22 @@ extends Spatial
 
 # Use the GodotPhysics physics engine
 
-#DevNotes:
+#To-do notes:
 	# Remove friction in the air as well. On becoming grounded, scale it up over a fraction of a second to allow a small slide
 
 	# Add crouch. Crouch during jump while space is held to make landing accurately easier.
 
 	# Fix input to cancel opposing inputs instead of one overriding.
-
-	# Limit jump based on slope normal?
-	 # upward slope scales to less force
-	 # downward slope scales to more force
+	
+	# Fix friction
+	# Fix force application when transitioning between certain slopes
 
 ### Integrate forces vars
 export var speed := 100 # 100 # Player speed
 export var jump: float # 5 # Jump force multiplier
 export var air_control: float # 3 # Air control multiplier
 export var mouse_sensitivity: = 0.05
-export var speed_limit = 10 # 10 # Default speed limit of the player while grounded
+export var speed_limit = 10 # 10 # Default speed limit of the player while grounded (and while in the air for the moment)
 var player_physics_material = load("res://Physics/player.tres")
 var friction = player_physics_material.friction # Editor friction value
 var is_landing: bool = false # Whether the player has jumped and let go of jump
@@ -221,12 +220,12 @@ func _integrate_forces(state):
 		# If the angle is to the right of the velocity
 		if (theta > 0 and theta < 90):
 			# Take the cross product between the velocity and the y-axis
-			# to get the vector to the right of the velocity
+			# to get the vector 90 degrees to the right of the velocity
 			move = nvel.cross(head.transform.basis.y)
 		# If the angle is to the left of the velocity
 		elif(theta < 0 and theta > -90):
 			# Take the cross product between the y-axis and the velocity
-			# to get the vector to the left of the velocity
+			# to get the vector 90 degrees to the left of the velocity
 			move = head.transform.basis.y.cross(nvel)
 		if (is_grounded):
 			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
