@@ -1,2 +1,2 @@
 # RigidBodyController
-The begninnings of a first person rigidbody character controller in Godot
+The beginnings of a first person rigidbody character controller in Godot
