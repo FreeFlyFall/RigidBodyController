@@ -122,10 +122,8 @@ func _integrate_forces(state):
 				upper_slope_normal = slope_normal
 		if (upper_slope_normal.y >= 0.5):
 			is_grounded = true
-	print(upper_slope_normal)
 	# If the player isn't against a wall or something tilting toward them
 	if (is_grounded):
-		print(state.get_contact_count())
 		# If the player meets a transition and the highest slope normal is not flat
 		if (state.get_contact_count() > 1 and upper_slope_normal.y < (1 - flat_offset)):
 			player_physics_material.rough = false
@@ -219,12 +217,12 @@ func _integrate_forces(state):
 		# If the angle is to the right of the velocity
 		if (theta > 0 and theta < 90):
 			# Take the cross product between the velocity and the y-axis
-			# to get the vector to the right of the velocity
+			# to get the vector 90 degrees to the right of the velocity
 			move = nvel.cross(head.transform.basis.y)
 		# If the angle is to the left of the velocity
 		elif(theta < 0 and theta > -90):
 			# Take the cross product between the y-axis and the velocity
-			# to get the vector to the left of the velocity
+			# to get the vector 90 degrees to the left of the velocity
 			move = head.transform.basis.y.cross(nvel)
 		if (is_grounded):
 			move = move.cross(slope_normal).cross(slope_normal).cross(slope_normal).cross(slope_normal)
