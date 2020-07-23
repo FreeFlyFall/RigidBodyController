@@ -62,6 +62,7 @@ fire={
 common/physics_fps=240
 2d/physics_engine="GodotPhysics"
 3d/physics_engine="GodotPhysics"
+3d/default_gravity=14.9
 
 [rendering]
 
