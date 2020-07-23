@@ -81,6 +81,7 @@ transform = Transform( 1, -0.000456548, 0.000514082, 0.000455753, 0.999999, 0.00
 mode = 2
 mass = 0.612245
 physics_material_override = ExtResource( 2 )
+continuous_cd = true
 contacts_reported = 5
 can_sleep = false
 linear_damp = 0.01
@@ -165,6 +166,18 @@ material/0 = SubResource( 13 )
 [node name="StaticBody" type="StaticBody" parent="TiltedPlaneStatic3"]
 
 [node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic3/StaticBody"]
+shape = SubResource( 11 )
+
+[node name="TiltedPlaneStatic5" type="MeshInstance" parent="."]
+transform = Transform( 13.2712, 0, 0, 0, 0.239196, 0, 0, 0, 26.342, -0.0535469, 15.8842, 66.1008 )
+cast_shadow = 2
+use_in_baked_light = true
+mesh = SubResource( 12 )
+material/0 = SubResource( 13 )
+
+[node name="StaticBody" type="StaticBody" parent="TiltedPlaneStatic5"]
+
+[node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic5/StaticBody"]
 shape = SubResource( 11 )
 
 [node name="TiltedPlaneStatic4" type="MeshInstance" parent="."]

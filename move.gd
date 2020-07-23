@@ -3,8 +3,6 @@ extends Spatial
 # Use the GodotPhysics physics engine
 
 #DevNotes to-do:
-	# Fix bug not allowing player to move in the air if falling faster than velocity limit
-	# Remove friction in the air as well. On becoming grounded, scale it up over a fraction of a second to allow a small slide
 	# Add crouch. Crouch during jump only while space is held to make landing accurately easier.
 	# Fix input to cancel opposing inputs instead of one overriding.
 
@@ -38,13 +36,22 @@ var cv_dist = 0.45
 # Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
 var ov_dist= cv_dist/sqrt(2)
 
+# Capture mouse on load
+func _ready():
+	Input.set_mouse_mode(2) # Captured and hidden
 
-### Player Look
 func _input(event):
+	# Player look
 	if event is InputEventMouseMotion:
 		head.rotate_y(deg2rad(-event.relative.x * mouse_sensitivity))
 		yaw.rotate_x(deg2rad(-event.relative.y * mouse_sensitivity))
 		yaw.rotation.x = clamp(yaw.rotation.x, deg2rad(-90), deg2rad(90))
+	# Capture and release mouse
+	if event.is_action_pressed("ui_cancel"):
+		if Input.get_mouse_mode() == 2:
+			Input.set_mouse_mode(0) # Free the mouse
+		else:
+			Input.set_mouse_mode(2)
 
 func _physics_process(_delta):
 	# Get world state for collisions
@@ -60,7 +67,7 @@ func _physics_process(_delta):
 		var loc = self.translation
 		# subtract a distance to get below the capsule
 		loc.y -= start
-		# Create the distance from center in a certain direction
+		# Create the distance from the capsule center in a certain direction
 		match i:
 			# Cardinal vectors
 			0: 
@@ -87,52 +94,38 @@ func _physics_process(_delta):
 		# Copy the current location below the capsule and subtract from it
 		var loc2 = loc
 		loc2.y -= bottom
-		# Add the two vectors for this iteration to the list for the raycast
+		# Add the two points for this iteration to the list for the raycast
 		raycast_list.append([loc,loc2])
-	# Check each raycast for collision
+	# Check each raycast for collision, ignoring the capsule itself
 	for array in raycast_list:
 		var collision = direct_state.intersect_ray(array[0],array[1],[self])
 		if collision:
 			is_grounded = true
 
-# Capture mouse on load
-func _ready():
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)	
-	mouse_captured = true
-func _process(_delta):
-	# Capture/release mouse on 'Esc' press
-	if Input.is_action_just_pressed("ui_cancel"):
-		if (mouse_captured == true):
-			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-			mouse_captured = false
-		else:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			mouse_captured = true
-
 func _integrate_forces(state):
 	### Friction and grounding
 	# If the player body is contacting something,
 	if (state.get_contact_count() > 0):
-		# get the normal of the point of contact
-		upper_slope_normal = state.get_contact_local_normal(0)
+		# iterate over the capsule contact points
 		for i in state.get_contact_count():
-			# If the contact normal is facing up, the player is grounded
 			slope_normal = state.get_contact_local_normal(i)
 			if (slope_normal.y < upper_slope_normal.y): # Lower normal means steeper slope
 				upper_slope_normal = slope_normal
+		# If the contact normal is facing up, the player is grounded
 		if (upper_slope_normal.y >= 0.5):
 			is_grounded = true
 	# If the player isn't against a wall or something tilting toward them
 	if (is_grounded):
-		# If the player meets a transition and the highest slope normal is not flat
+		# Then if the player meets a transition and the highest slope normal is not flat
 		if (state.get_contact_count() > 1 and upper_slope_normal.y < (1 - flat_offset)):
+			# Reduce friction by dividing by the number of contacts
 			player_physics_material.rough = false
 			player_physics_material.friction = friction/state.get_contact_count()
 		# Else use normal friction
 		else:
 			player_physics_material.rough = true
 			player_physics_material.friction = friction
-	# Else turn it off
+	# If the player is not grounded, turn off friction
 	else:
 		player_physics_material.rough = false
 		player_physics_material.friction = 0
@@ -144,7 +137,6 @@ func _integrate_forces(state):
 		if (is_grounded):
 			state.apply_central_impulse(Vector3(0,1,0) * jump)
 			is_landing = false
-			#self.linear_damp = -1
 	if (not is_grounded) and Input.is_action_just_released("jump"):
 		if (is_landing == false):
 			var jump_fraction = jump / 5
@@ -177,16 +169,18 @@ func _integrate_forces(state):
 		move = head.transform.basis.x
 	elif Input.is_action_pressed("move_left"):
 		move = -head.transform.basis.x
+	var move2 = Vector2(move.x, move.z) # Convert movement to vector2
 
+	# Get the player velocity
 	var vel = state.get_linear_velocity()
-	var nvel = vel.normalized() # The normalized player velocity
+	#print(vel)
+	# Remove vertical velocity to get normalized vector of x and z only
+	vel.y = 0
+	var nvel = vel.normalized() # Get the normalized horizontal player velocity
 
-	var move2 = Vector2(move.x, move.z)
-	var nvel2 = Vector2(nvel.x, nvel.z)
-	
-	#print(vel,nvel)
-	# make separate var to hold nvel copy. Norm it to an axis value -1, or 1
-	# for next logic block to work.	
+	# 2D vector to use with angle_to and dot methods
+	var nvel2 = Vector2(nvel.x, nvel.z) 
+
 	# If they player is below the speed limit, accept a force in any direction
 	if ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
 	(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
@@ -205,9 +199,9 @@ func _integrate_forces(state):
 		else:
 			state.add_central_force(move*air_control)
 	# If the player's speed is above the limit, and the movement vector
-	# is facing the velocity, add a force perpendicular to the velocity;
-	# the force is to the left if the angle between the the velocity and
-	# movement vectors is negative, and to the right if it's positive.
+	# is facing the velocity, add the force perpendicular to the
+	# velocity; the force is to the left if the angle between the the velocity
+	# and movement vectors is negative, and to the right if it's positive.
 	else:
 		# Get the angle between the velocity and current movement vector
 		var angle = nvel2.angle_to(move2)
@@ -232,6 +226,5 @@ func _integrate_forces(state):
 
 	# Shotgun jump test
 	if (Input.is_action_just_pressed("fire")):
-		var direction = Vector3()
-		direction = camera.global_transform.basis.z # Opposite of look direction
+		var direction: Vector3 = camera.global_transform.basis.z # Opposite of look direction
 		state.add_central_force(direction*2500)
