@@ -54,10 +54,10 @@ data = PoolVector3Array( 0, 1, 0, 0, 1, 0, 0, 0.9955, 0.0951, 0, 1, 0, 0.0093, 0
 [sub_resource type="PhysicsMaterial" id=16]
 friction = 0.0
 
-[sub_resource type="BoxShape" id=17]
-extents = Vector3( 1.5, 0.5, 1.5 )
+[sub_resource type="CubeMesh" id=17]
 
-[sub_resource type="CubeMesh" id=18]
+[sub_resource type="ConvexPolygonShape" id=18]
+points = PoolVector3Array( -1, 1, 1, 1, 1, -1, 1, 1, 1, -1, 1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1, -1, -1, 1, 1, 1, -1, 1, -1, 1, 1, -1, -1, 1, 1, 1, -1, 1, -1, -1, -1, 1, -1, -1, -1, -1, 1, 1, 1, 1, -1, -1, 1, -1, 1, 1, 1, -1, 1, 1, 1, -1, -1, -1, -1, -1, 1, -1, 1, -1, -1 )
 
 [sub_resource type="GIProbeData" id=19]
 bounds = AABB( -458.879, -50.0623, -207.626, 917.758, 100.125, 415.253 )
@@ -86,8 +86,9 @@ contacts_reported = 5
 can_sleep = false
 linear_damp = 0.01
 script = ExtResource( 1 )
-jump = 5.0
-air_control = 4.0
+accel = 100
+jump = 5
+air_control = 3
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]
 transform = Transform( 1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0 )
@@ -129,6 +130,18 @@ material/0 = null
 physics_material_override = SubResource( 7 )
 
 [node name="CollisionShape" type="CollisionShape" parent="CubeSatic/StaticBody"]
+shape = SubResource( 8 )
+
+[node name="CubeSatic2" type="MeshInstance" parent="."]
+transform = Transform( 1.99177, 0.000245296, 0.181198, -0.00037014, 1, -0.00134631, -0.181198, 0.000653618, 1.99177, 17.4391, 1.13494, -11.8961 )
+use_in_baked_light = true
+mesh = SubResource( 6 )
+material/0 = null
+
+[node name="StaticBody" type="StaticBody" parent="CubeSatic2"]
+physics_material_override = SubResource( 7 )
+
+[node name="CollisionShape" type="CollisionShape" parent="CubeSatic2/StaticBody"]
 shape = SubResource( 8 )
 
 [node name="TiltedPlaneStatic" type="MeshInstance" parent="."]
@@ -180,8 +193,20 @@ material/0 = SubResource( 13 )
 [node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic5/StaticBody"]
 shape = SubResource( 11 )
 
+[node name="TiltedPlaneStatic6" type="MeshInstance" parent="."]
+transform = Transform( 13.2712, 0, 0, 0, 0.239174, -0.357678, 0, 0.00324786, 26.3396, -0.0535469, -0.182174, -55.5612 )
+cast_shadow = 2
+use_in_baked_light = true
+mesh = SubResource( 12 )
+material/0 = SubResource( 13 )
+
+[node name="StaticBody" type="StaticBody" parent="TiltedPlaneStatic6"]
+
+[node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic6/StaticBody"]
+shape = SubResource( 11 )
+
 [node name="TiltedPlaneStatic4" type="MeshInstance" parent="."]
-transform = Transform( -2.16215e-06, 0.239196, 4.29166e-06, 0, -3.897e-08, 26.342, 13.2712, 3.897e-08, 6.99201e-13, 36.1786, 0, 5.7009 )
+transform = Transform( -2.16215e-06, -0.239196, -4.29166e-06, 0, -3.897e-08, 26.342, -13.2712, 3.897e-08, 6.992e-13, 36.1786, 0.963938, 5.7009 )
 cast_shadow = 2
 use_in_baked_light = true
 mesh = SubResource( 12 )
@@ -190,6 +215,18 @@ material/0 = SubResource( 13 )
 [node name="StaticBody" type="StaticBody" parent="TiltedPlaneStatic4"]
 
 [node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic4/StaticBody"]
+shape = SubResource( 11 )
+
+[node name="TiltedPlaneStatic7" type="MeshInstance" parent="."]
+transform = Transform( -1.62492, -2.20032, -1.14279e-06, 0, -9.69081e-08, 26.342, -13.1711, 0.271452, 1.40985e-07, 41.8533, 0, 34.6269 )
+cast_shadow = 2
+use_in_baked_light = true
+mesh = SubResource( 12 )
+material/0 = SubResource( 13 )
+
+[node name="StaticBody" type="StaticBody" parent="TiltedPlaneStatic7"]
+
+[node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic7/StaticBody"]
 shape = SubResource( 11 )
 
 [node name="SphereStatic" type="MeshInstance" parent="."]
@@ -210,13 +247,14 @@ mass = 11.9224
 physics_material_override = SubResource( 16 )
 script = ExtResource( 3 )
 
-[node name="CollisionShape" type="CollisionShape" parent="MovingRBCube"]
-shape = SubResource( 17 )
-
 [node name="MeshInstance" type="MeshInstance" parent="MovingRBCube"]
-transform = Transform( 1.5, 0, 0, 0, 0.5, 0, 0, 0, 1.5, 0, 0, 0 )
-mesh = SubResource( 18 )
+transform = Transform( 2.369, 0, 0, 0, 0.5, 0, 0, 0, 2.677, 0, 0, 0 )
+mesh = SubResource( 17 )
 material/0 = null
+
+[node name="CollisionShape" type="CollisionShape" parent="MovingRBCube"]
+transform = Transform( 2.369, 0, 0, 0, 0.5, 0, 0, 0, 2.677, 0, 0, 0 )
+shape = SubResource( 18 )
 
 [node name="DirectionalLight" type="DirectionalLight" parent="."]
 transform = Transform( 0.251867, 0.967762, 8.93903e-09, 0.0660924, -0.017201, 0.997665, 0.965503, -0.251279, -0.068294, 0.0889626, 16.6875, -0.00400639 )
