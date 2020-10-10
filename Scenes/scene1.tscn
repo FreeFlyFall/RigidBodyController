@@ -89,6 +89,7 @@ script = ExtResource( 1 )
 accel = 100
 jump = 5
 air_control = 3
+speed_limit = 10.0
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]
 transform = Transform( 1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0 )
@@ -103,9 +104,9 @@ material/0 = null
 [node name="Head" type="Spatial" parent="Player"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 )
 
-[node name="Yaw" type="Spatial" parent="Player/Head"]
+[node name="Pitch" type="Spatial" parent="Player/Head"]
 
-[node name="Camera" type="Camera" parent="Player/Head/Yaw"]
+[node name="Camera" type="Camera" parent="Player/Head/Pitch"]
 far = 500.0
 
 [node name="FloorStatic" type="MeshInstance" parent="."]

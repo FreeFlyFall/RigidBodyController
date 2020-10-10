@@ -12,17 +12,16 @@ export var accel: int # 100 # Player acceleration force
 export var jump: int # 5 # Jump force multiplier
 export var air_control: int # 3 # Air control multiplier
 export var mouse_sensitivity: = 0.05
-export var speed_limit = 10 # 10 # Default speed limit of the player while grounded
+export var speed_limit: float # 10 # Default speed limit of the player while grounded
 var player_physics_material = load("res://Physics/player.tres")
 var friction = player_physics_material.friction # Editor friction value
 var is_landing: bool = false # Whether the player has jumped and let go of jump
 var slope_normal: Vector3 # Stores normals of contact points for iteration
-export var flat_offset = 0.02 # Which normal value offset from 1 by a slope is considered not flat
 
 ### Process vars
-onready var head = $Head
-onready var yaw = $Head/Yaw
-onready var camera = $Head/Yaw/Camera
+onready var head = $Head # Horizontal rotation node
+onready var pitch = $Head/Pitch # Vertical rotation node
+onready var camera = $Head/Pitch/Camera
 var mouse_captured: bool
 
 ### Physics process vars
@@ -44,8 +43,8 @@ func _input(event):
 	# Player look
 	if event is InputEventMouseMotion:
 		head.rotate_y(deg2rad(-event.relative.x * mouse_sensitivity))
-		yaw.rotate_x(deg2rad(-event.relative.y * mouse_sensitivity))
-		yaw.rotation.x = clamp(yaw.rotation.x, deg2rad(-90), deg2rad(90))
+		pitch.rotate_x(deg2rad(-event.relative.y * mouse_sensitivity))
+		pitch.rotation.x = clamp(pitch.rotation.x, deg2rad(-90), deg2rad(90))
 	# Capture and release mouse
 	if event.is_action_pressed("ui_cancel"):
 		if Input.get_mouse_mode() == 2:
@@ -128,7 +127,7 @@ func _integrate_forces(state):
 			var new_friction = friction
 			for i in state.get_contact_count():
 				if state.get_contact_local_normal(i).y > 0.1:
-					new_friction *= 0.4*(pow(state.get_contact_local_normal(i).y,3))
+					new_friction *= 0.2*(pow(state.get_contact_local_normal(i).y,3))
 			player_physics_material.friction = new_friction
 		# Else use normal friction
 		else:
