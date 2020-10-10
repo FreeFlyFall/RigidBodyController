@@ -3,7 +3,7 @@ extends Spatial
 # Use the GodotPhysics physics engine
 
 #DevNotes to-do:
-	# Use raycast towads movement direction to determine which normals to use for movement cross products.
+	# Use raycast towards movement direction to determine which normals to use for movement cross products.
 	# Add crouch. Crouch during jump only while space is held to make landing accurately easier.
 	# Fix input to cancel opposing inputs instead of one overriding.
 
