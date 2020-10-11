@@ -90,6 +90,7 @@ accel = 100
 jump = 5
 air_control = 3
 speed_limit = 10.0
+walkable_normal = 0.5
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]
 transform = Transform( 1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0 )
@@ -219,7 +220,7 @@ material/0 = SubResource( 13 )
 shape = SubResource( 11 )
 
 [node name="TiltedPlaneStatic7" type="MeshInstance" parent="."]
-transform = Transform( -1.62492, -2.20032, -1.14279e-06, 0, -9.69081e-08, 26.342, -13.1711, 0.271452, 1.40985e-07, 41.8533, 0, 34.6269 )
+transform = Transform( -1.56857, -2.12402, 6.87686, 0.424203, 0.574417, 25.4285, -13.1711, 0.271452, 1.40985e-07, 41.8533, 0, 34.6269 )
 cast_shadow = 2
 use_in_baked_light = true
 mesh = SubResource( 12 )

@@ -13,6 +13,10 @@ export var jump: int # 5 # Jump force multiplier
 export var air_control: int # 3 # Air control multiplier
 export var mouse_sensitivity: = 0.05
 export var speed_limit: float # 10 # Default speed limit of the player while grounded
+export(float, 0, 1, 0.01) var walkable_normal # 0.5 # Walkable slope. Lower is steeper
+var upper_slope_normal: Vector3
+var lower_slope_normal: Vector3
+
 var player_physics_material = load("res://Physics/player.tres")
 var friction = player_physics_material.friction # Editor friction value
 var is_landing: bool = false # Whether the player has jumped and let go of jump
@@ -98,12 +102,12 @@ func _physics_process(_delta):
 	# Check each raycast for collision, ignoring the capsule itself
 	for array in raycast_list:
 		var collision = direct_state.intersect_ray(array[0],array[1],[self])
-		if collision:
+		if (collision and (collision.normal.y >= walkable_normal)):
 			is_grounded = true
 
 func _integrate_forces(state):
-	var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
-	var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
+	upper_slope_normal = Vector3(0,1,0) # Stores the lowest (steepest) slope normal
+	lower_slope_normal = Vector3(0,-1,0)# Stores the highest (flattest) slope normal
 	
 	### Friction and grounding
 	# If the player body is contacting something,
@@ -115,14 +119,14 @@ func _integrate_forces(state):
 				upper_slope_normal = slope_normal
 			if (slope_normal.y > lower_slope_normal.y):
 				lower_slope_normal = slope_normal
-		# If the contact normal is facing up, the player is grounded
-		if (upper_slope_normal.y >= 0.5):
+		# If the contact normal is more shallow than the walkable_normal, the player is grounded
+		if (upper_slope_normal.y >= walkable_normal):
 			is_grounded = true
-	# If the player isn't against a wall or something tilting toward them
+	# If the player isn't against an unwalkable slope
 	if (is_grounded):
-		# Then if the player meets a transition and the highest slope normal is not flat
+		# Then if the player meets a transition
 		if (state.get_contact_count() > 1):
-			# Reduce friction by dividing by the number of contacts
+			# Reduce friction
 			player_physics_material.rough = true
 			var new_friction = friction
 			for i in state.get_contact_count():
@@ -192,19 +196,11 @@ func _integrate_forces(state):
 	if ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
 	(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
 	(nvel.x == 0 or nvel.z == 0)):
-		if (is_grounded):
-			move = cross4(move,lower_slope_normal)
-			state.add_central_force(move*accel)
-		else:
-			state.add_central_force(move*air_control)
+		move(move,state)
 	# If the player's speed is above the limit, and the movement vector
 	# faces away from the velocity vector, add the force
 	elif (nvel2.dot(move2) < 0):
-		if (is_grounded):
-			move = cross4(move,lower_slope_normal)
-			state.add_central_force(move*accel)
-		else:
-			state.add_central_force(move*air_control)
+		move(move,state)
 	# If the player's speed is above the limit, and the movement vector
 	# is facing the velocity, add the force perpendicular to the
 	# velocity; the force is to the left if the angle between the the velocity
@@ -225,16 +221,20 @@ func _integrate_forces(state):
 			# Take the cross product between the y-axis and the velocity
 			# to get the vector 90 degrees to the left of the velocity
 			move = head.transform.basis.y.cross(nvel)
-		if (is_grounded):
-			move = cross4(move,lower_slope_normal)
-			state.add_central_force(move*accel)
-		else:
-			state.add_central_force(move*air_control)
+		move(move,state)
 
 	# Shotgun jump test
 	if (Input.is_action_just_pressed("fire")):
 		var direction: Vector3 = camera.global_transform.basis.z # Opposite of look direction
 		state.add_central_force(direction*2500)
 
+# Return 4 cross products of b with a
 func cross4(a,b):
 	return a.cross(b).cross(b).cross(b).cross(b)
+
+func move(move,state):
+	if (is_grounded):
+		move = cross4(move,lower_slope_normal) # Get slope to move along based on contact
+		state.add_central_force(move*accel)
+	else:
+		state.add_central_force(move*air_control)
