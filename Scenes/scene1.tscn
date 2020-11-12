@@ -79,7 +79,7 @@ transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.21883, 0 )
 visible = false
 
 [node name="Player" type="RigidBody" parent="."]
-transform = Transform( 1, -0.000456548, 0.000514082, 0.000455753, 0.999999, 0.00154719, -0.000514786, -0.00154695, 0.999999, 0, 1.28135, 0 )
+transform = Transform( 1, -0.000456548, 0.000514082, 0.000455753, 0.999999, 0.00154719, -0.000514786, -0.00154695, 0.999999, 0, 1.10634, 0 )
 mode = 2
 mass = 2.5
 physics_material_override = ExtResource( 2 )
@@ -110,6 +110,7 @@ transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 )
 [node name="Pitch" type="Spatial" parent="Player/Head"]
 
 [node name="Camera" type="Camera" parent="Player/Head/Pitch"]
+transform = Transform( 1, -8.32756e-10, -1.74623e-09, -7.61702e-11, 1, -5.23869e-09, 1.16415e-10, 0, 1, 0, 0, 0 )
 fov = 101.1
 far = 500.0
 
@@ -235,6 +236,18 @@ material/0 = SubResource( 14 )
 [node name="StaticBody" type="StaticBody" parent="TiltedPlaneStatic4"]
 
 [node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic4/StaticBody"]
+shape = SubResource( 12 )
+
+[node name="TiltedPlaneStatic8" type="MeshInstance" parent="."]
+transform = Transform( 0.209611, -0.239166, -4.29112e-06, 0, -3.897e-08, 26.342, -13.2695, -0.00377796, -6.77842e-08, 36.1786, 0.963938, -23.486 )
+cast_shadow = 2
+use_in_baked_light = true
+mesh = SubResource( 13 )
+material/0 = SubResource( 14 )
+
+[node name="StaticBody" type="StaticBody" parent="TiltedPlaneStatic8"]
+
+[node name="CollisionShape" type="CollisionShape" parent="TiltedPlaneStatic8/StaticBody"]
 shape = SubResource( 12 )
 
 [node name="TiltedPlaneStatic7" type="MeshInstance" parent="."]
