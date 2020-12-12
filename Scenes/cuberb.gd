@@ -10,4 +10,4 @@ func _integrate_forces(state):
 		once = true
 		var direction = Vector3(0,0,1)
 		#if state.get_linear_velocity().z < 5:
-		state.apply_central_impulse(direction*250)
+		state.apply_central_impulse(-direction*3000)
