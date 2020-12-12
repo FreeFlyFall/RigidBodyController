@@ -135,14 +135,14 @@ func _integrate_forces(state):
 		# If the steepest slope contacted is more shallow than the walkable_normal, the player is grounded
 		if (is_walkable(upper_slope_normal.y)):
 			is_grounded = true
-		# If the shallowest contact index exists, get the velocity of the body at the contacted point
-		if (shallowest_contact_index >= 0):
-			var contact_position = state.get_contact_collider_position(0) # coords of the contact point from center of contacted body
-			var collisions = get_colliding_bodies()
-			if (collisions.size() > 0 and collisions[0].get_class() == "RigidBody"):
-				contacted_body = collisions[0]
-				contacted_body_vel_at_point = get_contacted_body_velocity_at_point(contacted_body, contact_position)
-				#print(contacted_body_vel_at_point)
+			# If the shallowest contact index exists, get the velocity of the body at the contacted point
+			if (shallowest_contact_index >= 0):
+				var contact_position = state.get_contact_collider_position(0) # coords of the contact point from center of contacted body
+				var collisions = get_colliding_bodies()
+				if (collisions.size() > 0 and collisions[0].get_class() == "RigidBody"):
+					contacted_body = collisions[0]
+					contacted_body_vel_at_point = get_contacted_body_velocity_at_point(contacted_body, contact_position)
+					#print(contacted_body_vel_at_point)
 
 ### Jumping
 	# If the player tried to jump, and is grounded, apply an upward force times the jump multiplier
@@ -241,18 +241,14 @@ func is_below_speed_limit(nvel,vel):
 
 # Move the player
 func move(move,state):
-	var force: int
-	# Determine which kind of movement vector and force to use
-	if (is_grounded):
-		move = cross4(move,lower_slope_normal) # Get slope to move along based on the contact normal
-		force = accel
+	if is_grounded:
+		move = cross4(move,lower_slope_normal) # Get slope to move along based on contact
+		state.add_central_force(move * accel)
+		# Account for equal and opposite reaction when accelerating on ground
+		if (contacted_body != null):
+			contacted_body.add_force(move * -accel,state.get_contact_collider_position(0))
 	else:
-		force = air_control
-	# Add force
-	state.add_central_force(move * force)
-	# Account for equal and opposite reaction when accelerating
-	if (contacted_body != null):
-		contacted_body.add_force(move * -force,state.get_contact_collider_position(0))
+		state.add_central_force(move * air_control)
 
 # Set player friction
 func set_friction(move):
