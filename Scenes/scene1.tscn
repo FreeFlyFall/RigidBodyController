@@ -92,7 +92,7 @@ script = ExtResource( 1 )
 accel = 300
 jump = 25
 air_control = 20
-speed_limit = 10.0
+speed_limit = 15.0
 walkable_normal = 0.35
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]

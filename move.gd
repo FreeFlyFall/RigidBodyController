@@ -13,9 +13,9 @@ export var accel: int # 300 # Player acceleration force
 export var jump: int # 25 # Jump force multiplier
 export var air_control: int # 20 # Air control multiplier
 export var mouse_sensitivity: = 0.05 # 0.05 
-export var speed_limit: float # 10 # Default speed limit of the player while grounded
+export var speed_limit: float # 10 # Default speed limit of the player
 export(float, 0, 1, 0.01) var walkable_normal # 0.35 # Walkable slope. Lower is steeper
-var friction_divider = 8 # Amount to divide the friction by while moving or not grounded
+var friction_divider = 2 # Amount to divide the friction by while moving or not grounded
 var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
 var contacted_body: RigidBody # Rigid body the player is currently contacting, if there is one
@@ -192,21 +192,24 @@ func _integrate_forces(state):
 	# is facing the velocity, add the force perpendicular to the
 	# velocity; the force is to the left if the angle between the the velocity
 	# and movement vectors is negative, and to the right if it's positive.
+	#print(nvel2.dot(move2))
 	else:
 		# Get the angle between the velocity and current movement vector and convert it to degrees
 		var angle = nvel2.angle_to(move2)
 		var theta = rad2deg(angle)
 		# If the angle is to the right of the velocity
-		if (theta > 0 and theta < 90):
+		if (theta > 1 and theta < 90):
 			# Take the cross product between the velocity and the y-axis
 			# to get the vector 90 degrees to the right of the velocity
 			move = nvel.cross(head.transform.basis.y)
+			move(move,state)
 		# If the angle is to the left of the velocity
-		elif(theta < 0 and theta > -90):
+		elif(theta < -1 and theta > -90):
 			# Take the cross product between the y-axis and the velocity
 			# to get the vector 90 degrees to the left of the velocity
 			move = head.transform.basis.y.cross(nvel)
-		move(move,state)
+			move(move,state)
+	#pass
 ### End movement
 
 	# Shotgun jump test
@@ -215,7 +218,7 @@ func _integrate_forces(state):
 		state.add_central_force(direction*7500)
 
 # Gets the velocity of a contacted rigidbody at the point of contact with the player capsule
-func get_contacted_body_velocity_at_point(contacted_body, contact_position):
+func get_contacted_body_velocity_at_point(contacted_body: RigidBody, contact_position: Vector3):
 	# Global coordinates of contacted body
 	var body_position = contacted_body.transform.origin
 	# Global coordinates of the point of contact between the player and contacted body
@@ -242,11 +245,13 @@ func is_below_speed_limit(nvel,vel):
 # Move the player
 func move(move,state):
 	if is_grounded:
+		#print(move)
 		move = cross4(move,lower_slope_normal) # Get slope to move along based on contact
 		state.add_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if (contacted_body != null):
 			contacted_body.add_force(move * -accel,state.get_contact_collider_position(0))
+			print("Adding opposite force"+String(move*-accel))
 	else:
 		state.add_central_force(move * air_control)
 
