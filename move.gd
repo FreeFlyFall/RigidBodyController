@@ -3,8 +3,8 @@ extends RigidBody
 # Use the GodotPhysics physics engine
 
 #DevNotes to-do:
-	# Change values for capsule raycasts to be calculated based on height/radius
-	# Use raycast towards movement direction to determine which normals to use for movement cross products.
+	# Change perpendicular velocity when at the speed limit which is added to
+		# help with turning to be scaled based on intended movement direction.
 	# Add crouch. Crouch during jump only while space is held to make landing accurately easier.
 	# Fix input to cancel opposing inputs instead of one overriding.
 
@@ -15,7 +15,7 @@ export var air_control: int # 20 # Air control multiplier
 export var mouse_sensitivity: = 0.05 # 0.05 
 export var speed_limit: float # 10 # Default speed limit of the player
 export(float, 0, 1, 0.01) var walkable_normal # 0.35 # Walkable slope. Lower is steeper
-var friction_divider = 2 # Amount to divide the friction by while moving or not grounded
+var friction_divider = 6 # Amount to divide the friction by while moving or not grounded
 var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
 var contacted_body: RigidBody # Rigid body the player is currently contacting, if there is one
@@ -29,26 +29,20 @@ var slope_normal: Vector3 # Stores normals of contact points for iteration
 onready var head = $Head # y-axis rotation node (look left and right)
 onready var pitch = $Head/Pitch # x-axis rotation node (look up and down)
 onready var camera = $Head/Pitch/Camera # Camera node
+onready var capsule = $CollisionShape.shape # Capsule collision shape of the player
 
 ### Physics process vars
 var is_grounded: bool # Whether the player is considered to be touching a walkable slope
-var raycast_list = Array() # List of raycasts used with detecting groundedness
-var start = 1.2 # Start point down from the top of the player to start the raycast
-var bottom = 0.29 # Distance down from start to fire the raycast to
-# Cardinal vector distance
-var cv_dist = 0.45
-# Ordinal vector distance
-# Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
-var ov_dist= cv_dist/sqrt(2)
 
-#Input vars
 enum mouse {freed = 0, taken = 2}
+var ld = preload("res://Scripts//DrawLine3D.gd").new()
 
-
-# On load
+### Godot notification functions ###
 func _ready():
 	Input.set_mouse_mode(mouse.taken) # Capture and hide mouse
-	
+	# Add line drawer
+	add_child(ld)	
+
 func _input(event):
 	# Player look
 	if event is InputEventMouseMotion:
@@ -61,9 +55,14 @@ func _input(event):
 			Input.set_mouse_mode(mouse.freed) # Free the mouse
 		else:
 			Input.set_mouse_mode(mouse.taken)
-			
+
 func _physics_process(_delta):
-	var this = get_colliding_bodies()
+	# Define raycast info used with detecting groundedness
+	var raycast_list = Array() # List of raycasts used with detecting groundedness
+	var bottom = 0.3 # Distance down from start to fire the raycast to
+	var start = (capsule.height/2 + capsule.radius)-0.05 # Start point down from the top of the player to start the raycast
+	var cv_dist = capsule.radius-0.1 # Cardinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
+	var ov_dist = cv_dist/sqrt(2) # Ordinal vector distance. 
 	# Get world state for collisions
 	var direct_state = get_world().direct_space_state
 	raycast_list.clear()
@@ -164,7 +163,6 @@ func _integrate_forces(state):
 	set_friction(move)
 	
 	# Get the player velocity relative to the contacting body
-	#print(state.get_linear_velocity())
 	var vel = Vector3()
 	if is_grounded:
 		# Keep vertical velocity if grounded. vel will be normalized below 
@@ -180,7 +178,7 @@ func _integrate_forces(state):
 	# Get a normalized player velocity 
 	var nvel = vel.normalized()
 	var nvel2 = Vector2(nvel.x, nvel.z) # 2D velocity vector to use with angle_to and dot methods
-
+	
 	# If they player is below the speed limit, accept a force in any direction
 	if (is_below_speed_limit(nvel,vel)):
 		move(move,state)
@@ -192,7 +190,6 @@ func _integrate_forces(state):
 	# is facing the velocity, add the force perpendicular to the
 	# velocity; the force is to the left if the angle between the the velocity
 	# and movement vectors is negative, and to the right if it's positive.
-	#print(nvel2.dot(move2))
 	else:
 		# Get the angle between the velocity and current movement vector and convert it to degrees
 		var angle = nvel2.angle_to(move2)
@@ -209,7 +206,12 @@ func _integrate_forces(state):
 			# to get the vector 90 degrees to the left of the velocity
 			move = head.transform.basis.y.cross(nvel)
 			move(move,state)
-	#pass
+	
+	# The else is hit when the speed limit is reached, so a sideways force is added
+	# This actually helps with turning, but I think it needs scaled based on
+	# how close the move vector is to the horizontal vector instead of just
+	# adding the full force sideways
+	
 ### End movement
 
 	# Shotgun jump test
@@ -217,6 +219,7 @@ func _integrate_forces(state):
 		var direction: Vector3 = camera.global_transform.basis.z # Opposite of look direction
 		state.add_central_force(direction*7500)
 
+### Functions ###
 # Gets the velocity of a contacted rigidbody at the point of contact with the player capsule
 func get_contacted_body_velocity_at_point(contacted_body: RigidBody, contact_position: Vector3):
 	# Global coordinates of contacted body
@@ -245,19 +248,34 @@ func is_below_speed_limit(nvel,vel):
 # Move the player
 func move(move,state):
 	if is_grounded:
-		#print(move)
-		move = cross4(move,lower_slope_normal) # Get slope to move along based on contact
+		var direct_state = get_world().direct_space_state
+		
+		# Raycast to get slope
+		# Start at the edge of the cylinder of the capsule in the movement direction
+		var start = (self.translation - Vector3(0,capsule.height/2,0)) + (move * capsule.radius)
+		var end = start + Vector3.DOWN * 200
+		var hit = direct_state.intersect_ray(start, end, [self])
+		var use_normal: Vector3
+		# If the slope in front of the player movement direction is steeper than the
+		# shallowest contact, use the steepest contact normal to calculate the movement slope
+		if hit and hit.normal.y < lower_slope_normal.y:
+			use_normal = upper_slope_normal
+		else:
+			use_normal = lower_slope_normal
+		
+		move = cross4(move,use_normal) # Get slope to move along based on contact
 		state.add_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if (contacted_body != null):
 			contacted_body.add_force(move * -accel,state.get_contact_collider_position(0))
-			print("Adding opposite force"+String(move*-accel))
+			#print("Adding opposite force"+String(move*-accel))
 	else:
 		state.add_central_force(move * air_control)
 
 # Set player friction
 func set_friction(move):
 	player_physics_material.friction = local_friction
+	# If moving or not grounded, reduce friction
 	if ((move != Vector3(0,0,0)) or (not is_grounded)):
 		player_physics_material.friction = local_friction/friction_divider
 		

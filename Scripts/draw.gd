@@ -5,10 +5,10 @@ extends Spatial
 # Note: Drawing at translation draws at top of capsule, not player origin
 
 var raycast_list = Array()
-var start = 1.23
+var start = 1.2
 var bottom = 0.26
 # Cardinal vector distance
-var cv_dist = 0.45
+var cv_dist = 0.5
 # Secondary vector distance
 # Added to 2 cardinal vectors to result in a diagonal with the same maginitude of a cardinal vector
 var sv_dist= cv_dist/sqrt(2)
