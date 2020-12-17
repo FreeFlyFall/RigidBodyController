@@ -1,10 +1,7 @@
 extends RigidBody
 
 # Use the GodotPhysics physics engine
-
 #DevNotes to-do:
-	# Change perpendicular velocity when at the speed limit which is added to
-		# help with turning to be scaled based on intended movement direction.
 	# Add crouch. Crouch during jump only while space is held to make landing accurately easier.
 	# Fix input to cancel opposing inputs instead of one overriding.
 
@@ -12,18 +9,18 @@ extends RigidBody
 export var accel: int # 300 # Player acceleration force
 export var jump: int # 25 # Jump force multiplier
 export var air_control: int # 20 # Air control multiplier
+export(float, 15, 120, 1) var turning_scale # 45 # How quickly to scale movement towards a turning direction. Lower is more.
 export var mouse_sensitivity: = 0.05 # 0.05 
 export var speed_limit: float # 10 # Default speed limit of the player
 export(float, 0, 1, 0.01) var walkable_normal # 0.35 # Walkable slope. Lower is steeper
 var friction_divider = 6 # Amount to divide the friction by while moving or not grounded
 var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
+var slope_normal: Vector3 # Stores normals of contact points for iteration
 var contacted_body: RigidBody # Rigid body the player is currently contacting, if there is one
-
 var player_physics_material = load("res://Physics/player.tres")
 var local_friction = player_physics_material.friction # Editor friction value
 var is_landing: bool = false # Whether the player has jumped and let go of jump
-var slope_normal: Vector3 # Stores normals of contact points for iteration
 
 ### Process vars
 onready var head = $Head # y-axis rotation node (look left and right)
@@ -34,14 +31,14 @@ onready var capsule = $CollisionShape.shape # Capsule collision shape of the pla
 ### Physics process vars
 var is_grounded: bool # Whether the player is considered to be touching a walkable slope
 
+### Misc
 enum mouse {freed = 0, taken = 2}
 var ld = preload("res://Scripts//DrawLine3D.gd").new()
 
 ### Godot notification functions ###
 func _ready():
 	Input.set_mouse_mode(mouse.taken) # Capture and hide mouse
-	# Add line drawer
-	add_child(ld)	
+	add_child(ld) # Add line drawer
 
 func _input(event):
 	# Player look
@@ -119,7 +116,7 @@ func _integrate_forces(state):
 	# Velocity of the Rigidbody the player is contacting
 	var contacted_body_vel_at_point = Vector3()
 	
-### Grounding and slopes
+### Grounding, slopes, & rigidbody contact point
 	# If the player body is contacting something
 	var shallowest_contact_index: int = -1
 	if (state.get_contact_count() > 0):
@@ -142,6 +139,9 @@ func _integrate_forces(state):
 					contacted_body = collisions[0]
 					contacted_body_vel_at_point = get_contacted_body_velocity_at_point(contacted_body, contact_position)
 					#print(contacted_body_vel_at_point)
+		# Else if the shallowest slope normal is not walkable, the player is not grounded
+		elif (!is_walkable(lower_slope_normal.y)):
+			is_grounded = false
 
 ### Jumping
 	# If the player tried to jump, and is grounded, apply an upward force times the jump multiplier
@@ -165,59 +165,59 @@ func _integrate_forces(state):
 	# Get the player velocity relative to the contacting body
 	var vel = Vector3()
 	if is_grounded:
-		# Keep vertical velocity if grounded. vel will be normalized below 
-		# accounting for the y value, preventing faster movement on slopes.
+		## Keep vertical velocity if grounded. vel will be normalized below
+		## accounting for the y value, preventing faster movement on slopes.
 		vel = state.get_linear_velocity()
 		vel -= contacted_body_vel_at_point
 	else:
-		# Remove y value of velocity so only horizontal speed is checked in the air.
-		# Without this, the normalized vel causes the speed limit check to
-		# progressively limit the player from moving horizontally in relation to vertical speed.
+		## Remove y value of velocity so only horizontal speed is checked in the air.
+		## Without this, the normalized vel causes the speed limit check to
+		## progressively limit the player from moving horizontally in relation to vertical speed.
 		vel = Vector3(state.get_linear_velocity().x,0,state.get_linear_velocity().z)
 		vel -= Vector3(contacted_body_vel_at_point.x,0,contacted_body_vel_at_point.z)
 	# Get a normalized player velocity 
 	var nvel = vel.normalized()
 	var nvel2 = Vector2(nvel.x, nvel.z) # 2D velocity vector to use with angle_to and dot methods
 	
-	# If they player is below the speed limit, accept a force in any direction
-	if (is_below_speed_limit(nvel,vel)):
-		move(move,state)
-	# If the player's speed is above the limit, and the movement vector
-	# faces away from the velocity vector, add the force
-	elif (nvel2.dot(move2) < 0):
-		move(move,state)
-	# If the player's speed is above the limit, and the movement vector
-	# is facing the velocity, add the force perpendicular to the
-	# velocity; the force is to the left if the angle between the the velocity
-	# and movement vectors is negative, and to the right if it's positive.
-	else:
-		# Get the angle between the velocity and current movement vector and convert it to degrees
-		var angle = nvel2.angle_to(move2)
-		var theta = rad2deg(angle)
-		# If the angle is to the right of the velocity
-		if (theta > 1 and theta < 90):
-			# Take the cross product between the velocity and the y-axis
-			# to get the vector 90 degrees to the right of the velocity
-			move = nvel.cross(head.transform.basis.y)
-			move(move,state)
-		# If the angle is to the left of the velocity
-		elif(theta < -1 and theta > -90):
-			# Take the cross product between the y-axis and the velocity
-			# to get the vector 90 degrees to the left of the velocity
-			move = head.transform.basis.y.cross(nvel)
-			move(move,state)
-	
-	# The else is hit when the speed limit is reached, so a sideways force is added
-	# This actually helps with turning, but I think it needs scaled based on
-	# how close the move vector is to the horizontal vector instead of just
-	# adding the full force sideways
-	
+	## If below the speed limit, or above the limit, but facing away from the velocity,
+	## move the player, adding an assisting force if turning. If above the speed limit,
+	## and facing the velocity, add a force perpendicular to the velocity and scale
+	## it based on where the player is looking in relation to the velocity.
+	# Get the angle between the velocity and current movement vector and convert it to degrees
+	var angle = nvel2.angle_to(move2)
+	var theta = rad2deg(angle) # Angle between 2D look and velocity vectors
+	var is_below_speed_limit: bool = is_below_speed_limit(nvel,vel)
+	var is_facing_velocity: bool = (nvel2.dot(move2) >= 0)
+	var direction: Vector3 # vector to be set 90 degrees either to the left or right of the velocity
+	var scale: float # Scaled from 0 to 1. Used for both turn assist interpolation and vector scaling
+	# If the angle is to the right of the velocity
+	if (theta > 0 and theta < 90):
+		direction = nvel.cross(head.transform.basis.y) # Vecor 90 degrees to the right of velocity
+		scale = clamp(theta/turning_scale, 0, 1) # Turn assist scale
+	# If the angle is to the left of the velocity
+	elif(theta < 0 and theta > -90):
+		direction = head.transform.basis.y.cross(nvel) # Vecor 90 degrees to the left of velocity
+		scale = clamp(-theta/turning_scale, 0, 1)
+	# If not pushing into an unwalkable slope
+	if (upper_slope_normal.y > walkable_normal):
+		# If the player is below the speed limit, or is above it, but facing away from the velocity
+		if (is_below_speed_limit or not is_facing_velocity):
+			# Interpolate between the movement and velocity vectors, scaling with turn assist sensitivity
+			move = move.linear_interpolate(direction, scale)
+		# If the player is above the speed limit, and looking within 90 degrees of the velocity
+		else:
+			move = direction # Set the move vector 90 to the right or left of the velocity vector
+			move *= scale # Scale the vector. 0 if looking at velocity, up to full magnitude if looking 90+ degrees to the side.
+		move(move, state)
+	# If pushing into unwalkable slope, move with unscaled movement vector
+	elif is_below_speed_limit:
+		move(move, state)	
 ### End movement
 
 	# Shotgun jump test
 	if (Input.is_action_just_pressed("fire")):
-		var direction: Vector3 = camera.global_transform.basis.z # Opposite of look direction
-		state.add_central_force(direction*7500)
+		var dir: Vector3 = camera.global_transform.basis.z # Opposite of look direction
+		state.add_central_force(dir*7500)
 
 ### Functions ###
 # Gets the velocity of a contacted rigidbody at the point of contact with the player capsule
@@ -234,19 +234,20 @@ func get_contacted_body_velocity_at_point(contacted_body: RigidBody, contact_pos
 # Return 4 cross products of b with a
 func cross4(a,b):
 	return a.cross(b).cross(b).cross(b).cross(b)
-	
+
 # Whether a slope is walkable
 func is_walkable(normal):
 	return (normal >= walkable_normal) # Lower normal means steeper slope
 
 # Whether the player is below the speed limit in the direction they're traveling
-func is_below_speed_limit(nvel,vel):
+func is_below_speed_limit(nvel, vel):
 	return ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
 		(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
 		(nvel.x == 0 or nvel.z == 0))
 
 # Move the player
 func move(move,state):
+	#var draw_start = self.translation - Vector3(0,capsule.height/2,0) + move # debug
 	if is_grounded:
 		var direct_state = get_world().direct_space_state
 		
@@ -264,12 +265,13 @@ func move(move,state):
 			use_normal = lower_slope_normal
 		
 		move = cross4(move,use_normal) # Get slope to move along based on contact
+		#ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(1,0,0),2) # debug
 		state.add_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if (contacted_body != null):
 			contacted_body.add_force(move * -accel,state.get_contact_collider_position(0))
-			#print("Adding opposite force"+String(move*-accel))
 	else:
+		#ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(0,0,1),2) # debug
 		state.add_central_force(move * air_control)
 
 # Set player friction
