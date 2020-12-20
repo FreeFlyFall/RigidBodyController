@@ -57,7 +57,7 @@ func _physics_process(_delta):
 	# Define raycast info used with detecting groundedness
 	var raycast_list = Array() # List of raycasts used with detecting groundedness
 	var bottom = 0.3 # Distance down from start to fire the raycast to
-	var start = (capsule.height/2 + capsule.radius)-0.05 # Start point down from the top of the player to start the raycast
+	var start = (capsule.height/2 + capsule.radius)-0.05 # Start point down from the center of the player to start the raycast
 	var cv_dist = capsule.radius-0.1 # Cardinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
 	var ov_dist = cv_dist/sqrt(2) # Ordinal vector distance. 
 	# Get world state for collisions
@@ -106,7 +106,7 @@ func _physics_process(_delta):
 	for array in raycast_list:
 		var collision = direct_state.intersect_ray(array[0],array[1],[self])
 		# The player is grounded if any of the raycasts hit
-		if (collision and (collision.normal.y >= walkable_normal)):
+		if (collision and is_walkable(collision.normal.y)):
 			is_grounded = true
 
 func _integrate_forces(state):
@@ -162,7 +162,7 @@ func _integrate_forces(state):
 	
 	set_friction(move)
 	
-	# Get the player velocity relative to the contacting body
+	# Get the player velocity, relative to the contacting body if there is one
 	var vel = Vector3()
 	if is_grounded:
 		## Keep vertical velocity if grounded. vel will be normalized below
@@ -179,7 +179,7 @@ func _integrate_forces(state):
 	var nvel = vel.normalized()
 	var nvel2 = Vector2(nvel.x, nvel.z) # 2D velocity vector to use with angle_to and dot methods
 	
-	## If below the speed limit, or above the limit, but facing away from the velocity,
+	## If below the speed limit, or above the limit but facing away from the velocity,
 	## move the player, adding an assisting force if turning. If above the speed limit,
 	## and facing the velocity, add a force perpendicular to the velocity and scale
 	## it based on where the player is looking in relation to the velocity.
@@ -209,7 +209,7 @@ func _integrate_forces(state):
 			move = direction # Set the move vector 90 to the right or left of the velocity vector
 			move *= scale # Scale the vector. 0 if looking at velocity, up to full magnitude if looking 90+ degrees to the side.
 		move(move, state)
-	# If pushing into unwalkable slope, move with unscaled movement vector
+	# If pushing into an unwalkable slope, move with unscaled movement vector. Prevents turn assist from pushing the player into the wall.
 	elif is_below_speed_limit:
 		move(move, state)	
 ### End movement
