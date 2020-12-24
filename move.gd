@@ -236,7 +236,7 @@ func _integrate_forces(state):
 		# If the player is above the speed limit, and looking within 90 degrees of the velocity
 		else:
 			move = direction # Set the move vector 90 to the right or left of the velocity vector
-			move *= scale # Scale the vector. 0 if looking at velocity, up to full magnitude if looking 90+ degrees to the side.
+			move *= scale # Scale the vector. 0 if looking at velocity, up to full magnitude if looking 90 degrees to the side.
 		move(move, state)
 	# If pushing into an unwalkable slope, move with unscaled movement vector. Prevents turn assist from pushing the player into the wall.
 	elif is_below_speed_limit:
