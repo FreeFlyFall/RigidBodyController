@@ -2,8 +2,7 @@ extends RigidBody
 
 # Use the GodotPhysics physics engine
 #DevNotes to-do:
-	# Add crouch. Crouch during jump only while space is held to make landing accurately easier.
-	# Fix input to cancel opposing inputs instead of one overriding.
+	# Newton's third law eventually breaks. Wondering if it's a physics engine bug.
 
 ### Integrate forces vars
 export var accel: int # 300 # Player acceleration force
@@ -11,8 +10,11 @@ export var jump: int # 25 # Jump force multiplier
 export var air_control: int # 20 # Air control multiplier
 export(float, 15, 120, 1) var turning_scale # 45 # How quickly to scale movement towards a turning direction. Lower is more.
 export var mouse_sensitivity: = 0.05 # 0.05 
-export var speed_limit: float # 10 # Default speed limit of the player
 export(float, 0, 1, 0.01) var walkable_normal # 0.35 # Walkable slope. Lower is steeper
+export(int, 2, 20) var speed_to_crouch # Speed to move in/out of crouching position at. # Too high causes phisics glitches currently.
+export var speed_limit: float # 10 # Default speed limit of the player
+export var crouching_speed_limit: float # 5 # Speed to move at while crouching
+var current_speed_limit: float
 var friction_divider = 6 # Amount to divide the friction by while moving or not grounded
 var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
@@ -30,6 +32,8 @@ onready var capsule = $CollisionShape.shape # Capsule collision shape of the pla
 
 ### Physics process vars
 var is_grounded: bool # Whether the player is considered to be touching a walkable slope
+var original_height: float
+var crouching_height: float
 
 ### Misc
 enum mouse {freed = 0, taken = 2}
@@ -37,6 +41,9 @@ var ld = preload("res://Scripts//DrawLine3D.gd").new()
 
 ### Godot notification functions ###
 func _ready():
+	# Get capsule variables
+	original_height = capsule.height
+	crouching_height = capsule.height/2
 	Input.set_mouse_mode(mouse.taken) # Capture and hide mouse
 	add_child(ld) # Add line drawer
 
@@ -53,7 +60,9 @@ func _input(event):
 		else:
 			Input.set_mouse_mode(mouse.taken)
 
-func _physics_process(_delta):
+var is_done_shrinking: bool # temporary # Whether the player is currently shrinking towards being crouched
+func _physics_process(delta):
+### Groundedness raycasts
 	# Define raycast info used with detecting groundedness
 	var raycast_list = Array() # List of raycasts used with detecting groundedness
 	var bottom = 0.3 # Distance down from start to fire the raycast to
@@ -108,6 +117,26 @@ func _physics_process(_delta):
 		# The player is grounded if any of the raycasts hit
 		if (collision and is_walkable(collision.normal.y)):
 			is_grounded = true
+### Crouching
+	var scale = delta * speed_to_crouch # Amount to change capsule height up or down
+	var move_camera = delta/2 * speed_to_crouch # Amount to move camera
+	match Input.is_action_pressed("crouch"):
+		true: # Shrink
+			current_speed_limit = crouching_speed_limit
+			if (capsule.height > crouching_height):
+				capsule.height -= scale
+				camera.translation.y -= move_camera
+			## Adding a force to work around some physics glitches for the moment
+			elif is_done_shrinking == false:
+				var look_direction = head.transform.basis.z
+				self.add_central_force(look_direction * accel*1.5)
+				is_done_shrinking = true
+		false: # Grow
+			is_done_shrinking = false
+			current_speed_limit = speed_limit
+			if (capsule.height < original_height):
+				capsule.height += scale
+				camera.translation.y += move_camera
 
 func _integrate_forces(state):
 	upper_slope_normal = Vector3(0,1,0)
@@ -157,7 +186,7 @@ func _integrate_forces(state):
 			is_landing = true
 
 ### Movement
-	var move = relative_input() ## Maybe move this into _input() so it's more efficient
+	var move = relative_input() # Get movement vector relative to player orientation
 	var move2 = Vector2(move.x, move.z) # Convert movement for Vector2 methods
 	
 	set_friction(move)
@@ -241,8 +270,8 @@ func is_walkable(normal):
 
 # Whether the player is below the speed limit in the direction they're traveling
 func is_below_speed_limit(nvel, vel):
-	return ((nvel.x >= 0 and vel.x < nvel.x*speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*speed_limit) or
-		(nvel.z >= 0 and vel.z < nvel.z*speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*speed_limit) or
+	return ((nvel.x >= 0 and vel.x < nvel.x*current_speed_limit) or (nvel.x <= 0 and vel.x > nvel.x*current_speed_limit) or
+		(nvel.z >= 0 and vel.z < nvel.z*current_speed_limit) or (nvel.z <= 0 and vel.z > nvel.z*current_speed_limit) or
 		(nvel.x == 0 or nvel.z == 0))
 
 # Move the player
@@ -288,23 +317,23 @@ func relative_input():
 	# Handle diagonal inputs
 	if (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_right")): 
 		# Add the closest 2 cardinal x/z vectors and normalize the result
-		move = (-head.transform.basis.z + head.transform.basis.x).normalized()
-	elif (Input.is_action_pressed("move_backward") and Input.is_action_pressed("move_right")): 
-		move = (head.transform.basis.z + head.transform.basis.x).normalized()
-	elif (Input.is_action_pressed("move_backward") and Input.is_action_pressed("move_left")): 
-		move = (head.transform.basis.z + -head.transform.basis.x).normalized()
-	elif (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_left")): 
-		move = (-head.transform.basis.z + -head.transform.basis.x).normalized()
+		move += (-head.transform.basis.z + head.transform.basis.x).normalized()
+	if (Input.is_action_pressed("move_backward") and Input.is_action_pressed("move_right")): 
+		move += (head.transform.basis.z + head.transform.basis.x).normalized()
+	if (Input.is_action_pressed("move_backward") and Input.is_action_pressed("move_left")): 
+		move += (head.transform.basis.z + -head.transform.basis.x).normalized()
+	if (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_left")): 
+		move += (-head.transform.basis.z + -head.transform.basis.x).normalized()
 	# Handle z-axis inputs
-	elif Input.is_action_pressed("move_forward"):
+	if Input.is_action_pressed("move_forward"):
 		# Normalized movement vector based on forward look direction (-z)
-		move = -head.transform.basis.z
-	elif Input.is_action_pressed("move_backward"):
-		move = head.transform.basis.z
+		move += -head.transform.basis.z
+	if Input.is_action_pressed("move_backward"):
+		move += head.transform.basis.z
 	# Handle x-axis inputs
-	elif Input.is_action_pressed("move_right"):
+	if Input.is_action_pressed("move_right"):
 		# Normalized movement vector based on right direction (x)
-		move = head.transform.basis.x
-	elif Input.is_action_pressed("move_left"):
-		move = -head.transform.basis.x
+		move += head.transform.basis.x
+	if Input.is_action_pressed("move_left"):
+		move += -head.transform.basis.x
 	return move

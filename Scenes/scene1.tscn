@@ -76,7 +76,7 @@ propagation = 0.7
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.21883, 0 )
 
 [node name="Player" type="RigidBody" parent="."]
-transform = Transform( 1, -0.000456548, 0.000514082, 0.000455753, 0.999999, 0.00154719, -0.000514786, -0.00154695, 0.999999, -8.05169, 3.73761, 7.21693 )
+transform = Transform( 1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, -8.05169, 3.73761, 7.21693 )
 mode = 2
 mass = 2.5
 physics_material_override = ExtResource( 2 )
@@ -89,9 +89,11 @@ script = ExtResource( 1 )
 accel = 300
 jump = 25
 air_control = 20
-turning_scale = 90.0
-speed_limit = 12.0
+turning_scale = 120.0
 walkable_normal = 0.35
+speed_to_crouch = 8
+speed_limit = 10.0
+crouching_speed_limit = 5.0
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]
 transform = Transform( 1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0 )
