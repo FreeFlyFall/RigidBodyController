@@ -14,7 +14,6 @@ export(float, 0, 1, 0.01) var walkable_normal # 0.35 # Walkable slope. Lower is 
 export(int, 2, 20) var speed_to_crouch # Speed to move in/out of crouching position at. # Too high causes physics glitches currently.
 export var speed_limit: float # 10 # Default speed limit of the player
 export var crouching_speed_limit: float # 5 # Speed to move at while crouching
-var current_speed_limit: float # Current speed limit to use. For standing or crouching.
 var friction_divider = 6 # Amount to divide the friction by while moving or not grounded
 var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
@@ -34,6 +33,7 @@ onready var capsule = $CollisionShape.shape # Capsule collision shape of the pla
 var is_grounded: bool # Whether the player is considered to be touching a walkable slope
 var original_height: float
 var crouching_height: float
+var current_speed_limit: float # Current speed limit to use. For standing or crouching.
 
 ### Misc
 enum mouse {freed = 0, taken = 2}
