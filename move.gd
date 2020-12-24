@@ -11,10 +11,10 @@ export var air_control: int # 20 # Air control multiplier
 export(float, 15, 120, 1) var turning_scale # 45 # How quickly to scale movement towards a turning direction. Lower is more.
 export var mouse_sensitivity: = 0.05 # 0.05 
 export(float, 0, 1, 0.01) var walkable_normal # 0.35 # Walkable slope. Lower is steeper
-export(int, 2, 20) var speed_to_crouch # Speed to move in/out of crouching position at. # Too high causes phisics glitches currently.
+export(int, 2, 20) var speed_to_crouch # Speed to move in/out of crouching position at. # Too high causes physics glitches currently.
 export var speed_limit: float # 10 # Default speed limit of the player
 export var crouching_speed_limit: float # 5 # Speed to move at while crouching
-var current_speed_limit: float
+var current_speed_limit: float # Current speed limit to use. For standing or crouching.
 var friction_divider = 6 # Amount to divide the friction by while moving or not grounded
 var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
