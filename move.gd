@@ -140,17 +140,16 @@ func _physics_process(delta):
 	match posture:
 		SPRINTING:
 			current_speed_limit = sprinting_speed_limit
-		CROUCHING:
-			if Input.is_action_pressed("crouch"): # Shrink
-				current_speed_limit = crouching_speed_limit
-				if (capsule.height > crouching_height):
-					capsule.height -= scale
-					camera.translation.y -= move_camera
-				## Adding a force to work around some physics glitches for the moment
-				elif is_done_shrinking == false:
-					var look_direction = head.transform.basis.z
-					self.add_central_force(look_direction * mass * 100)
-					is_done_shrinking = true
+		CROUCHING: # Shrink
+			current_speed_limit = crouching_speed_limit
+			if (capsule.height > crouching_height):
+				capsule.height -= scale
+				camera.translation.y -= move_camera
+			## Adding a force to work around some physics glitches for the moment
+			elif is_done_shrinking == false:
+				var look_direction = head.transform.basis.z
+				self.add_central_force(look_direction * mass * 100)
+				is_done_shrinking = true
 		WALKING: # Grow
 			is_done_shrinking = false
 			current_speed_limit = speed_limit
