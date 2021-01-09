@@ -3,6 +3,6 @@
 [sub_resource type="GDScript" id=1]
 
 [resource]
-friction = 5.0
+friction = 2.0
 rough = true
 script = SubResource( 1 )

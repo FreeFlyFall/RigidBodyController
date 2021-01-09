@@ -2,19 +2,30 @@ extends RigidBody
 
 # Use the GodotPhysics physics engine
 #DevNotes to-do:
+	# Refactor jumping to be able to hold space? Will require changing groundedness raycasts
 	# Newton's third law eventually breaks. Wondering if it's a physics engine bug.
 
+### Global
+var is_grounded: bool # Whether the player is considered to be touching a walkable slope
+onready var capsule = $CollisionShape.shape # Capsule collision shape of the player
+onready var camera = $Head/Pitch/Camera # Camera node
+onready var head = $Head # y-axis rotation node (look left and right)
+
+### Input vars
+onready var pitch = $Head/Pitch # x-axis rotation node (look up and down)
+
 ### Integrate forces vars
-export var accel: int # 300 # Player acceleration force
-export var jump: int # 25 # Jump force multiplier
-export var air_control: int # 20 # Air control multiplier
-export(float, 15, 120, 1) var turning_scale # 45 # How quickly to scale movement towards a turning direction. Lower is more.
+export var accel: int  # Player acceleration force
+export var jump: int # Jump force multiplier
+export var air_control: int  # Air control multiplier
+export(float, 15, 120, 1) var turning_scale  # How quickly to scale movement towards a turning direction. Lower is more.
 export var mouse_sensitivity: = 0.05 # 0.05 
 export(float, 0, 1, 0.01) var walkable_normal # 0.35 # Walkable slope. Lower is steeper
 export(int, 2, 20) var speed_to_crouch # Speed to move in/out of crouching position at. # Too high causes physics glitches currently.
-export var speed_limit: float # 10 # Default speed limit of the player
-export var crouching_speed_limit: float # 5 # Speed to move at while crouching
-var friction_divider = 6 # Amount to divide the friction by while moving or not grounded
+export var speed_limit: float # 8 # Default speed limit of the player
+export var crouching_speed_limit: float # 4 # Speed to move at while crouching
+export var sprinting_speed_limit: float # 12 # Speed to move at while sprinting
+export var friction_divider = 6 # Amount to divide the friction by when not grounded (prevents sticking to walls from air control)
 var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3 # Stores the highest (flattest) slope normal
 var slope_normal: Vector3 # Stores normals of contact points for iteration
@@ -22,18 +33,15 @@ var contacted_body: RigidBody # Rigid body the player is currently contacting, i
 var player_physics_material = load("res://Physics/player.tres")
 var local_friction = player_physics_material.friction # Editor friction value
 var is_landing: bool = false # Whether the player has jumped and let go of jump
-
-### Process vars
-onready var head = $Head # y-axis rotation node (look left and right)
-onready var pitch = $Head/Pitch # x-axis rotation node (look up and down)
-onready var camera = $Head/Pitch/Camera # Camera node
-onready var capsule = $CollisionShape.shape # Capsule collision shape of the player
+var is_jumping: bool = false # Whether the player has jumped
+var was_jumping: bool = false # Whether the player was jumping during the last physics frame
 
 ### Physics process vars
-var is_grounded: bool # Whether the player is considered to be touching a walkable slope
 var original_height: float
 var crouching_height: float
 var current_speed_limit: float # Current speed limit to use. For standing or crouching.
+var posture # Current posture state
+enum { WALKING, CROUCHING, SPRINTING } # Possible values for posture
 
 ### Misc
 enum mouse {freed = 0, taken = 2}
@@ -62,10 +70,18 @@ func _input(event):
 
 var is_done_shrinking: bool # temporary # Whether the player is currently shrinking towards being crouched
 func _physics_process(delta):
+### Player posture FSM
+	if Input.is_action_pressed("crouch"):
+		posture = CROUCHING
+	elif Input.is_action_pressed("sprint"):
+		posture = SPRINTING
+	else:
+		posture = WALKING
+	
 ### Groundedness raycasts
 	# Define raycast info used with detecting groundedness
 	var raycast_list = Array() # List of raycasts used with detecting groundedness
-	var bottom = 0.3 # Distance down from start to fire the raycast to
+	var bottom = 0.1 # Distance down from start to fire the raycast to
 	var start = (capsule.height/2 + capsule.radius)-0.05 # Start point down from the center of the player to start the raycast
 	var cv_dist = capsule.radius-0.1 # Cardinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
 	var ov_dist = cv_dist/sqrt(2) # Ordinal vector distance. 
@@ -117,21 +133,25 @@ func _physics_process(delta):
 		# The player is grounded if any of the raycasts hit
 		if (collision and is_walkable(collision.normal.y)):
 			is_grounded = true
-### Crouching
+			
+### Sprinting & Crouching
 	var scale = delta * speed_to_crouch # Amount to change capsule height up or down
-	var move_camera = delta/2 * speed_to_crouch # Amount to move camera
-	match Input.is_action_pressed("crouch"):
-		true: # Shrink
-			current_speed_limit = crouching_speed_limit
-			if (capsule.height > crouching_height):
-				capsule.height -= scale
-				camera.translation.y -= move_camera
-			## Adding a force to work around some physics glitches for the moment
-			elif is_done_shrinking == false:
-				var look_direction = head.transform.basis.z
-				self.add_central_force(look_direction * mass * 100)
-				is_done_shrinking = true
-		false: # Grow
+	var move_camera = delta/2 * speed_to_crouch # Amount to move camera while crouching
+	match posture:
+		SPRINTING:
+			current_speed_limit = sprinting_speed_limit
+		CROUCHING:
+			if Input.is_action_pressed("crouch"): # Shrink
+				current_speed_limit = crouching_speed_limit
+				if (capsule.height > crouching_height):
+					capsule.height -= scale
+					camera.translation.y -= move_camera
+				## Adding a force to work around some physics glitches for the moment
+				elif is_done_shrinking == false:
+					var look_direction = head.transform.basis.z
+					self.add_central_force(look_direction * mass * 100)
+					is_done_shrinking = true
+		WALKING: # Grow
 			is_done_shrinking = false
 			current_speed_limit = speed_limit
 			if (capsule.height < original_height):
@@ -174,9 +194,10 @@ func _integrate_forces(state):
 
 ### Jumping
 	# If the player tried to jump, and is grounded, apply an upward force times the jump multiplier
-	if (Input.is_action_just_pressed("jump")):
-		if (is_grounded):
+	if Input.is_action_just_pressed("jump"):
+		if (is_grounded and not is_jumping):
 			state.apply_central_impulse(Vector3(0,1,0) * jump)
+			is_jumping = true
 			is_landing = false
 	# Apply a downward force once if the player lets go of jump to assist with landing
 	if (not is_grounded) and Input.is_action_just_released("jump"):
@@ -184,6 +205,9 @@ func _integrate_forces(state):
 			var jump_fraction = jump / 7
 			state.apply_central_impulse(Vector3(0,-1,0) * jump_fraction)
 			is_landing = true
+	if (is_grounded and was_jumping):
+		is_jumping = false
+	was_jumping = is_jumping
 
 ### Movement
 	var move = relative_input() # Get movement vector relative to player orientation
@@ -246,7 +270,7 @@ func _integrate_forces(state):
 	# Shotgun jump test
 	if (Input.is_action_just_pressed("fire")):
 		var dir: Vector3 = camera.global_transform.basis.z # Opposite of look direction
-		state.add_central_force(dir*7500)
+		state.add_central_force(dir*2700)
 
 ### Functions ###
 # Gets the velocity of a contacted rigidbody at the point of contact with the player capsule
@@ -307,7 +331,7 @@ func move(move,state):
 func set_friction(move):
 	player_physics_material.friction = local_friction
 	# If moving or not grounded, reduce friction
-	if ((move != Vector3(0,0,0)) or (not is_grounded)):
+	if not is_grounded:
 		player_physics_material.friction = local_friction/friction_divider
 		
 # Get movement vector based on input, relative to the player's camera transform
