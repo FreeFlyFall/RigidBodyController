@@ -129,7 +129,7 @@ func _physics_process(delta):
 			## Adding a force to work around some physics glitches for the moment
 			elif is_done_shrinking == false:
 				var look_direction = head.transform.basis.z
-				self.add_central_force(look_direction * accel*1.5)
+				self.add_central_force(look_direction * mass * 100)
 				is_done_shrinking = true
 		false: # Grow
 			is_done_shrinking = false
