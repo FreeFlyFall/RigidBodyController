@@ -234,7 +234,8 @@ func _integrate_forces(state):
 	## If below the speed limit, or above the limit but facing away from the velocity,
 	## move the player, adding an assisting force if turning. If above the speed limit,
 	## and facing the velocity, add a force perpendicular to the velocity and scale
-	## it based on where the player is looking in relation to the velocity.
+	## it based on where the player is moving in relation to the velocity.
+	##
 	# Get the angle between the velocity and current movement vector and convert it to degrees
 	var angle = nvel2.angle_to(move2)
 	var theta = rad2deg(angle) # Angle between 2D look and velocity vectors
