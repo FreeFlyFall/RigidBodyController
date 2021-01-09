@@ -8,11 +8,11 @@ extends RigidBody
 ### Global
 var is_grounded: bool # Whether the player is considered to be touching a walkable slope
 onready var capsule = $CollisionShape.shape # Capsule collision shape of the player
-onready var camera = $Head/Pitch/Camera # Camera node
-onready var head = $Head # y-axis rotation node (look left and right)
+onready var camera = $'../Head/Pitch/Camera' # Camera node
+onready var head = $'../Head' # y-axis rotation node (look left and right)
 
 ### Input vars
-onready var pitch = $Head/Pitch # x-axis rotation node (look up and down)
+onready var pitch = $'../Head/Pitch' # x-axis rotation node (look up and down)
 
 ### Integrate forces vars
 export var accel: int  # Player acceleration force
@@ -70,6 +70,9 @@ func _input(event):
 
 var is_done_shrinking: bool # temporary # Whether the player is currently shrinking towards being crouched
 func _physics_process(delta):
+	# Keep camera with player
+	head.translation = self.translation + Vector3.UP * capsule.height/2
+	
 ### Player posture FSM
 	if Input.is_action_pressed("crouch"):
 		posture = CROUCHING

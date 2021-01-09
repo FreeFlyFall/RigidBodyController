@@ -72,19 +72,18 @@ propagation = 0.7
 
 [node name="Spatial" type="Spatial"]
 
-[node name="draw" type="ImmediateGeometry" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.21883, 0 )
-
 [node name="Player" type="RigidBody" parent="."]
 transform = Transform( 1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, -7.24987, 2.80638, 5.18438 )
-mode = 2
 mass = 0.939597
 physics_material_override = ExtResource( 2 )
 continuous_cd = true
 contacts_reported = 5
 contact_monitor = true
 can_sleep = false
+axis_lock_angular_x = true
+axis_lock_angular_z = true
 linear_damp = 0.01
+angular_damp = 10.0
 script = ExtResource( 1 )
 accel = 120
 jump = 10
@@ -98,7 +97,7 @@ sprinting_speed_limit = 12.0
 friction_divider = 4
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]
-transform = Transform( 1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0 )
+transform = Transform( 1, 0, 1.42109e-11, 6.30962e-12, -4.36557e-08, -1, 5.82077e-11, 1, -4.37722e-08, 0, 0, 0 )
 shape = SubResource( 1 )
 
 [node name="MeshInstance" type="MeshInstance" parent="Player"]
@@ -107,12 +106,12 @@ cast_shadow = 0
 mesh = SubResource( 2 )
 material/0 = null
 
-[node name="Head" type="Spatial" parent="Player"]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 )
+[node name="Head" type="Spatial" parent="."]
+transform = Transform( 1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, -7.25033, 3.80638, 5.18283 )
 
-[node name="Pitch" type="Spatial" parent="Player/Head"]
+[node name="Pitch" type="Spatial" parent="Head"]
 
-[node name="Camera" type="Camera" parent="Player/Head/Pitch"]
+[node name="Camera" type="Camera" parent="Head/Pitch"]
 transform = Transform( 1, -8.32756e-10, -1.74623e-09, -7.61702e-11, 1, -5.23869e-09, 1.16415e-10, 0, 1, 0, 0, 0 )
 fov = 101.1
 far = 500.0
