@@ -303,7 +303,7 @@ func is_below_speed_limit(nvel, vel):
 
 # Move the player
 func move(move,state):
-	#var draw_start = self.translation - Vector3(0,capsule.height/2,0) + move # debug
+	var draw_start = self.translation - Vector3(0,capsule.height/2,0) + move # debug
 	if is_grounded:
 		var direct_state = get_world().direct_space_state
 		
@@ -321,13 +321,13 @@ func move(move,state):
 			use_normal = lower_slope_normal
 		
 		move = cross4(move,use_normal) # Get slope to move along based on contact
-		#ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(1,0,0),2) # debug
+		ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(1,0,0),2) # debug
 		state.add_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if (contacted_body != null):
 			contacted_body.add_force(move * -accel,state.get_contact_collider_position(0))
 	else:
-		#ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(0,0,1),2) # debug
+		ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(0,0,1),2) # debug
 		state.add_central_force(move * air_control)
 
 # Set player friction
@@ -341,26 +341,14 @@ func set_friction(move):
 func relative_input():
 	# Initialize the movement vector
 	var move = Vector3()
-	# Handle diagonal inputs
-	if (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_right")): 
-		# Add the closest 2 cardinal x/z vectors and normalize the result
-		move += (-head.transform.basis.z + head.transform.basis.x).normalized()
-	if (Input.is_action_pressed("move_backward") and Input.is_action_pressed("move_right")): 
-		move += (head.transform.basis.z + head.transform.basis.x).normalized()
-	if (Input.is_action_pressed("move_backward") and Input.is_action_pressed("move_left")): 
-		move += (head.transform.basis.z + -head.transform.basis.x).normalized()
-	if (Input.is_action_pressed("move_forward") and Input.is_action_pressed("move_left")): 
-		move += (-head.transform.basis.z + -head.transform.basis.x).normalized()
-	# Handle z-axis inputs
-	if Input.is_action_pressed("move_forward"):
-		# Normalized movement vector based on forward look direction (-z)
-		move += -head.transform.basis.z
-	if Input.is_action_pressed("move_backward"):
-		move += head.transform.basis.z
-	# Handle x-axis inputs
-	if Input.is_action_pressed("move_right"):
-		# Normalized movement vector based on right direction (x)
-		move += head.transform.basis.x
-	if Input.is_action_pressed("move_left"):
-		move += -head.transform.basis.x
-	return move
+	# Get cumulative input on axes
+	var input = Vector3()
+	input.z += int(Input.is_action_pressed("move_forward"))
+	input.z -= int(Input.is_action_pressed("move_backward"))
+	input.x += int(Input.is_action_pressed("move_right"))
+	input.x -= int(Input.is_action_pressed("move_left"))
+	# Add input vectors to movement relative to the direction the head is facing
+	move += input.z * -head.transform.basis.z
+	move += input.x * head.transform.basis.x
+	# Normalize to prevent stronger diagonal forces
+	return move.normalized()
