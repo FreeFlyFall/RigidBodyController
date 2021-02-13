@@ -6,6 +6,7 @@ extends RigidBody
 	# Newton's third law eventually breaks. Wondering if it's a physics engine bug.
 
 ### Global
+export var debug: bool
 var is_grounded: bool # Whether the player is considered to be touching a walkable slope
 onready var capsule = $CollisionShape.shape # Capsule collision shape of the player
 onready var camera = $'../Head/Pitch/Camera' # Camera node
@@ -321,13 +322,15 @@ func move(move,state):
 			use_normal = lower_slope_normal
 		
 		move = cross4(move,use_normal) # Get slope to move along based on contact
-		ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(1,0,0),2) # debug
+		if debug:
+			ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(1,0,0),2) # debug
 		state.add_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if (contacted_body != null):
 			contacted_body.add_force(move * -accel,state.get_contact_collider_position(0))
 	else:
-		ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(0,0,1),2) # debug
+		if debug:
+			ld.DrawLine(draw_start,draw_start+move*capsule.radius,Color(0,0,1),2) # debug
 		state.add_central_force(move * air_control)
 
 # Set player friction
