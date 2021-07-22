@@ -1,8 +1,8 @@
 extends RigidBody
 
-# Use the GodotPhysics physics engine
+### Use the GodotPhysics physics engine
+
 #DevNotes to-do:
-	# Refactor jumping to be able to hold space? Will require changing groundedness raycasts
 	# Newton's third law eventually breaks. Wondering if it's a physics engine bug.
 
 ### Global
@@ -33,9 +33,11 @@ var slope_normal: Vector3 # Stores normals of contact points for iteration
 var contacted_body: RigidBody # Rigid body the player is currently contacting, if there is one
 var player_physics_material = load("res://Physics/player.tres")
 var local_friction = player_physics_material.friction # Editor friction value
-var is_landing: bool = false # Whether the player has jumped and let go of jump
+var is_landing: bool = true # Whether the player has jumped and let go of jump
 var is_jumping: bool = false # Whether the player has jumped
-var was_jumping: bool = false # Whether the player was jumping during the last physics frame
+export(float,0.01,1,0.01) var JUMP_THROTTLE # 0.1 # Stores preference for time before the player can jump again
+var jump_throttle: float # Variable used with jump throttling calculations
+export var landing_assist: float # 1.5 # Downward force to apply when letting go of space while jumping
 
 ### Physics process vars
 var original_height: float
@@ -160,6 +162,12 @@ func _physics_process(delta):
 			if (capsule.height < original_height):
 				capsule.height += scale
 				camera.translation.y += move_camera
+	
+	# Setup jump throttle for integrate_forces
+	if is_jumping or is_landing:
+		jump_throttle -= delta
+	else:
+		jump_throttle = JUMP_THROTTLE
 
 func _integrate_forces(state):
 	upper_slope_normal = Vector3(0,1,0)
@@ -195,22 +203,23 @@ func _integrate_forces(state):
 		elif (!is_walkable(lower_slope_normal.y)):
 			is_grounded = false
 
-### Jumping
-	# If the player tried to jump, and is grounded, apply an upward force times the jump multiplier
-	if Input.is_action_just_pressed("jump"):
-		if (is_grounded and not is_jumping):
-			state.apply_central_impulse(Vector3(0,1,0) * jump)
-			is_jumping = true
-			is_landing = false
+### Jumping: Should allow the player to jump, and hold jump to jump again if they become grounded after a throttling period
+	var has_walkable_contact: bool = state.get_contact_count() > 0 and is_walkable(lower_slope_normal.y) # Different from is_grounded
+	# If the player is trying to jump, the throttle expired, the player is grounded, and they're not already jumping, jump
+	# Check for is_jumping is because contact still exists at the beginning of a jump for more than one physics frame
+	if Input.is_action_pressed("jump") and jump_throttle < 0 and has_walkable_contact and not is_jumping:
+		state.apply_central_impulse(Vector3(0,1,0) * jump)
+		is_jumping = true
+		is_landing = false
 	# Apply a downward force once if the player lets go of jump to assist with landing
-	if (not is_grounded) and Input.is_action_just_released("jump"):
-		if (is_landing == false):
-			var jump_fraction = jump / 7
-			state.apply_central_impulse(Vector3(0,-1,0) * jump_fraction)
+	if (Input.is_action_just_released("jump")):
+		if (is_landing == false): # Only apply the landing assist force once
 			is_landing = true
-	if (is_grounded and was_jumping):
+			if not has_walkable_contact:
+				state.apply_central_impulse(Vector3(0,-1,0) * landing_assist)
+	# If the player becomes grounded, they're no longer considered to be jumping
+	if has_walkable_contact:
 		is_jumping = false
-	was_jumping = is_jumping
 
 ### Movement
 	var move = relative_input() # Get movement vector relative to player orientation
@@ -255,8 +264,13 @@ func _integrate_forces(state):
 	elif(theta < 0 and theta > -90):
 		direction = head.transform.basis.y.cross(nvel) # Vecor 90 degrees to the left of velocity
 		scale = clamp(-theta/turning_scale, 0, 1)
+	# Prevent continuous sliding down steep walkable slopes when the player isn't moving. Could be made better with
+	# debouncing and customization because too high of a force also affects stopping distance noticeably when not on a slope.
+	if (move == Vector3(0,0,0) and is_grounded):
+			move = -vel/100
+			move(move,state)
 	# If not pushing into an unwalkable slope
-	if (upper_slope_normal.y > walkable_normal):
+	elif (upper_slope_normal.y > walkable_normal):
 		# If the player is below the speed limit, or is above it, but facing away from the velocity
 		if (is_below_speed_limit or not is_facing_velocity):
 			# Interpolate between the movement and velocity vectors, scaling with turn assist sensitivity
@@ -268,7 +282,7 @@ func _integrate_forces(state):
 		move(move, state)
 	# If pushing into an unwalkable slope, move with unscaled movement vector. Prevents turn assist from pushing the player into the wall.
 	elif is_below_speed_limit:
-		move(move, state)	
+		move(move, state)
 ### End movement
 
 	# Shotgun jump test
