@@ -38,6 +38,7 @@ var is_jumping: bool = false # Whether the player has jumped
 export(float,0.01,1,0.01) var JUMP_THROTTLE # 0.1 # Stores preference for time before the player can jump again
 var jump_throttle: float # Variable used with jump throttling calculations
 export var landing_assist: float # 1.5 # Downward force to apply when letting go of space while jumping
+export(float,0.1,100,0.1) var anti_slide_force # 3 # Amount of force to stop sliding with
 
 ### Physics process vars
 var original_height: float
@@ -265,9 +266,9 @@ func _integrate_forces(state):
 		direction = head.transform.basis.y.cross(nvel) # Vecor 90 degrees to the left of velocity
 		scale = clamp(-theta/turning_scale, 0, 1)
 	# Prevent continuous sliding down steep walkable slopes when the player isn't moving. Could be made better with
-	# debouncing and customization because too high of a force also affects stopping distance noticeably when not on a slope.
+	# debouncing because too high of a force also affects stopping distance noticeably when not on a slope.
 	if (move == Vector3(0,0,0) and is_grounded):
-			move = -vel/100
+			move = -vel / (mass*100/anti_slide_force)
 			move(move,state)
 	# If not pushing into an unwalkable slope
 	elif (upper_slope_normal.y > walkable_normal):

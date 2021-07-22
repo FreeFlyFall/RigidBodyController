@@ -4,5 +4,4 @@
 
 [resource]
 friction = 2.0
-rough = true
 script = SubResource( 1 )
