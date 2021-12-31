@@ -147,6 +147,7 @@ func _physics_process(delta):
 	match posture:
 		SPRINTING:
 			current_speed_limit = sprinting_speed_limit
+			grow_capsule(is_done_shrinking, scale, move_camera)
 		CROUCHING: # Shrink
 			current_speed_limit = crouching_speed_limit
 			if (capsule.height > crouching_height):
@@ -158,11 +159,8 @@ func _physics_process(delta):
 				self.add_central_force(look_direction * mass * 100)
 				is_done_shrinking = true
 		WALKING: # Grow
-			is_done_shrinking = false
 			current_speed_limit = speed_limit
-			if (capsule.height < original_height):
-				capsule.height += scale
-				camera.translation.y += move_camera
+			grow_capsule(is_done_shrinking, scale, move_camera)
 	
 	# Setup jump throttle for integrate_forces
 	if is_jumping or is_landing:
@@ -370,3 +368,10 @@ func relative_input():
 	move += input.x * head.transform.basis.x
 	# Normalize to prevent stronger diagonal forces
 	return move.normalized()
+	
+#
+func grow_capsule(is_done_shrinking, scale, move_camera):
+	is_done_shrinking = false
+	if (capsule.height < original_height):
+		capsule.height += scale
+		camera.translation.y += move_camera
