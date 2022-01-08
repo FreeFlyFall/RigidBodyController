@@ -3,7 +3,7 @@ extends RigidBody
 ### Use the GodotPhysics physics engine
 
 #DevNotes to-do:
-	# Newton's third law eventually breaks. Wondering if it's a physics engine bug.
+	# Newton's third law eventually breaks. Wondering whether it's a physics engine bug.
 
 ### Global
 export var debug: bool
@@ -90,8 +90,8 @@ func _physics_process(delta):
 	var raycast_list = Array() # List of raycasts used with detecting groundedness
 	var bottom = 0.1 # Distance down from start to fire the raycast to
 	var start = (capsule.height/2 + capsule.radius)-0.05 # Start point down from the center of the player to start the raycast
-	var cv_dist = capsule.radius-0.1 # Cardinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
-	var ov_dist = cv_dist/sqrt(2) # Ordinal vector distance. 
+	var cv_dist = capsule.radius-0.1 # Cardinal vector distance.
+	var ov_dist = cv_dist/sqrt(2) # Ordinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
 	# Get world state for collisions
 	var direct_state = get_world().direct_space_state
 	raycast_list.clear()
@@ -353,7 +353,7 @@ func set_friction(move):
 	if not is_grounded:
 		player_physics_material.friction = local_friction/friction_divider
 		
-# Get movement vector based on input, relative to the player's camera transform
+# Get movement vector based on input, relative to the player's head transform
 func relative_input():
 	# Initialize the movement vector
 	var move = Vector3()
