@@ -19,10 +19,10 @@ var is_grounded: bool  # Whether the player is considered to be touching a walka
 @export var accel: int  # Player acceleration force
 @export var jump: int  # Jump force multiplier
 @export var air_control: int  # Air control multiplier
-@export var turning_scale  # How quickly to scale movement towards a turning direction. Lower is more. # (float, 15, 120, 1)
+@export var turning_scale: float  # How quickly to scale movement towards a turning direction. Lower is more. # (float, 15, 120, 1)
 @export var mouse_sensitivity := 0.05  # 0.05
-@export var walkable_normal  # 0.35 # Walkable slope. Lower is steeper # (float, 0, 1, 0.01)
-@export var speed_to_crouch  # Speed to move in/out of crouching position at. # Too high causes physics glitches currently. # (int, 2, 20)
+@export var walkable_normal: float  # 0.35 # Walkable slope. Lower is steeper # (float, 0, 1, 0.01)
+@export var speed_to_crouch: int  # Speed to move in/out of crouching position at. # Too high causes physics glitches currently. # (int, 2, 20)
 @export var speed_limit: float  # 8 # Default speed limit of the player
 @export var crouching_speed_limit: float  # 4 # Speed to move at while crouching
 @export var sprinting_speed_limit: float  # 12 # Speed to move at while sprinting
@@ -35,10 +35,10 @@ var player_physics_material = load("res://Physics/player.tres")
 var local_friction = player_physics_material.friction  # Editor friction value
 var is_landing: bool = true  # Whether the player has jumped and let go of jump
 var is_jumping: bool = false  # Whether the player has jumped
-@export var JUMP_THROTTLE  # 0.1 # Stores preference for time before the player can jump again # (float,0.01,1,0.01)
+@export var JUMP_THROTTLE: float  # 0.1 # Stores preference for time before the player can jump again # (float,0.01,1,0.01)
 var jump_throttle: float  # Variable used with jump throttling calculations
 @export var landing_assist: float  # 1.5 # Downward force to apply when letting go of space while jumping
-@export var anti_slide_force  # 3 # Amount of force to stop sliding with # (float,0.1,100,0.1)
+@export var anti_slide_force: float  # 3 # Amount of force to stop sliding with # (float,0.1,100,0.1)
 
 ### Physics process vars
 var original_height: float
@@ -48,7 +48,6 @@ var posture  # Current posture state
 enum { WALKING, CROUCHING, SPRINTING }  # Possible values for posture
 
 ### Misc
-enum mouse { freed = 0, taken = 2 }
 var ld = preload("res://Scripts//DrawLine3D.gd").new()
 
 
@@ -57,7 +56,7 @@ func _ready():
 	# Get capsule variables
 	original_height = capsule.height
 	crouching_height = capsule.height / 2
-	Input.set_mouse_mode(mouse.taken)  # Capture and hide mouse
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)  # Capture and hide mouse
 	add_child(ld)  # Add line drawer
 
 
@@ -69,10 +68,10 @@ func _input(event):
 		pitch.rotation.x = clamp(pitch.rotation.x, deg_to_rad(-90), deg_to_rad(90))
 	# Capture and release mouse
 	if event.is_action_pressed("ui_cancel"):
-		if Input.get_mouse_mode() == mouse.taken:
-			Input.set_mouse_mode(mouse.freed)  # Free the mouse
+		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)  # Free the mouse
 		else:
-			Input.set_mouse_mode(mouse.taken)
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 
 var is_done_shrinking: bool  # temporary # Whether the player is currently shrinking towards being crouched
@@ -141,7 +140,13 @@ func _physics_process(delta):
 		raycast_list.append([loc, loc2])
 	# Check each raycast for collision, ignoring the capsule itself
 	for array in raycast_list:
-		var collision = direct_state.intersect_ray(array[0], array[1], [self])
+		# Some Godot 3 to 4 conversion information can be found at:
+		# https://www.reddit.com/r/godot/comments/u0fboh/comment/idtoz30/?utm_source=share&utm_medium=web2x&context=3
+		var params = PhysicsRayQueryParameters3D.new()
+		params.from = array[0]
+		params.to = array[1]
+		params.exclude = [self]
+		var collision = direct_state.intersect_ray(params)
 		# The player is grounded if any of the raycasts hit
 		if collision and is_walkable(collision.normal.y):
 			is_grounded = true
@@ -351,7 +356,13 @@ func move(move, state):
 		# Start at the edge of the cylinder of the capsule in the movement direction
 		var start = (self.position - Vector3(0, capsule.height / 2, 0)) + (move * capsule.radius)
 		var end = start + Vector3.DOWN * 200
-		var hit = direct_state.intersect_ray(start, end, [self])
+		# Some Godot 3 to 4 conversion information can be found at:
+		# https://www.reddit.com/r/godot/comments/u0fboh/comment/idtoz30/?utm_source=share&utm_medium=web2x&context=3
+		var params = PhysicsRayQueryParameters3D.new()
+		params.from = start
+		params.to = end
+		params.exclude = [self]
+		var hit = direct_state.intersect_ray(params)
 		var use_normal: Vector3
 		# If the slope in front of the player movement direction is steeper than the
 		# shallowest contact, use the steepest contact normal to calculate the movement slope
