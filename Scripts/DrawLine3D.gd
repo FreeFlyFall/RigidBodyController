@@ -24,7 +24,7 @@ func _process(delta):
 		RemovedLine = false
 
 func _draw():
-	var Cam = get_viewport().get_camera()
+	var Cam = get_viewport().get_camera_3d()
 	for i in range(len(Lines)):
 		var ScreenPointStart = Cam.unproject_position(Lines[i].Start)
 		var ScreenPointEnd = Cam.unproject_position(Lines[i].End)
