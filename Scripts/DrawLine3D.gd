@@ -23,6 +23,7 @@ func _process(delta):
 		Lines[i].InputTime -= delta
 
 	if len(Lines) > 0 || RemovedLine:
+		# TODO: This does NOT work!
 		_draw()  #Calls _draw
 		RemovedLine = false
 
