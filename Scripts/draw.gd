@@ -1,5 +1,5 @@
-tool
-extends Spatial
+@tool
+extends Node3D
 
 # Test tool to draw lines
 # Note: Drawing at translation draws at top of capsule, not player origin
@@ -21,7 +21,7 @@ func _process(_delta):
 	raycast_list.clear()
 	
 	for i in 8:
-		var loc = get_node('Player').translation
+		var loc = get_node('Player').position
 		loc.y -= start
 		match i:
 			# Cardinal vectors

@@ -1,7 +1,7 @@
-[gd_resource type="PhysicsMaterial" load_steps=2 format=2]
+[gd_resource type="PhysicsMaterial" load_steps=2 format=3 uid="uid://u55tuef0hp46"]
 
-[sub_resource type="GDScript" id=1]
+[sub_resource type="GDScript" id="1"]
 
 [resource]
 friction = 2.0
-script = SubResource( 1 )
+script = SubResource("1")
