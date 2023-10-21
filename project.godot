@@ -68,7 +68,7 @@ sprint={
 [physics]
 
 2d/physics_engine="GodotPhysics"
-3d/physics_engine="GodotPhysics3D"
+3d/physics_engine="JoltPhysics3D"
 3d/default_gravity=14.9
 common/physics_fps=240
 

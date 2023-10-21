@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://cwn6jw887nywo"]
+[gd_scene load_steps=16 format=3 uid="uid://cwn6jw887nywo"]
 
 [ext_resource type="Script" path="res://move.gd" id="1"]
 [ext_resource type="PhysicsMaterial" uid="uid://u55tuef0hp46" path="res://Physics/player.tres" id="2"]
@@ -7,7 +7,11 @@
 
 [sub_resource type="CapsuleShape3D" id="1"]
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yp2qg"]
+transparency = 1
+
 [sub_resource type="CapsuleMesh" id="2"]
+material = SubResource("StandardMaterial3D_yp2qg")
 
 [sub_resource type="VoxelGIData" id="20"]
 dynamic_range = 4.0
@@ -15,39 +19,45 @@ propagation = 0.7
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2qtx1"]
 albedo_texture = ExtResource("3_bxssy")
-uv1_scale = Vector3(1600, 200, 0)
+uv1_triplanar = true
+uv1_world_triplanar = true
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pc00p"]
 albedo_texture = ExtResource("6")
 uv1_scale = Vector3(2.595, 1.27, 0.67)
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_5qrlh"]
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_7emmy"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_n2yvt"]
-albedo_texture = ExtResource("3_bxssy")
-uv1_triplanar = true
-uv1_world_triplanar = true
-
-[sub_resource type="BoxMesh" id="BoxMesh_hwgry"]
-material = SubResource("StandardMaterial3D_n2yvt")
-
-[sub_resource type="BoxMesh" id="BoxMesh_ql5t3"]
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_vfg1s"]
-
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_8wokw"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wk1cy"]
 
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_8xrvn"]
+friction = 0.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_ql5t3"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_vfg1s"]
+size = Vector3(7.515, 0.555, 6.94)
+
 [node name="Node3D" type="Node3D"]
 
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, 0, 0, -5.371)
+
+[node name="Pitch" type="Node3D" parent="Head"]
+
+[node name="Camera3D" type="Camera3D" parent="Head/Pitch"]
+transform = Transform3D(1, 2.11969e-10, -5.82077e-11, -8.18545e-11, 1, 4.88944e-09, 4.07454e-10, -3.49246e-10, 1, 0, 0, 0)
+cull_mask = 1048573
+fov = 101.1
+far = 500.0
+
+[node name="Camera3D3rdPerson" type="Camera3D" parent="Head/Pitch"]
+transform = Transform3D(1, 0.000455753, -0.000514785, -0.000456548, 0.999998, -0.00154695, 0.00051408, 0.00154718, 0.999998, -0.00252864, 0.510108, 5.37179)
+
 [node name="Player" type="RigidBody3D" parent="."]
-transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, 0, 1.46965, 1.62877)
+transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, 0, -1.04877, -5.37123)
 axis_lock_angular_x = true
 axis_lock_angular_z = true
-mass = 0.939597
 physics_material_override = ExtResource("2")
 continuous_cd = true
 max_contacts_reported = 5
@@ -61,7 +71,7 @@ jump = 10
 air_control = 5
 turning_scale = 45.0
 walkable_normal = 0.35
-speed_to_crouch = 8
+speed_to_crouch = 6
 speed_limit = 8.0
 crouching_speed_limit = 4.0
 sprinting_speed_limit = 12.0
@@ -71,26 +81,17 @@ landing_assist = 1.5
 anti_slide_force = 4.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
-transform = Transform3D(1, -4.93969e-11, 1.16415e-10, 9.09495e-12, 1, -1.16415e-10, 0, 3.49246e-10, 1, 0, 0, 0)
+transform = Transform3D(1, -1.08457e-10, 1.16415e-10, 6.08225e-12, 1, -1.16415e-10, 1.16415e-10, 5.82077e-10, 1, 0, 0, 0)
 shape = SubResource("1")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Player"]
-transform = Transform3D(1, -1.07605e-10, 1.16415e-10, -4.87717e-11, 1, -3.49246e-10, 0, 1.04774e-09, 1, 0, 0, 0)
+transform = Transform3D(1, -1.37788e-10, 1.16415e-10, -5.1898e-11, 1, -3.49246e-10, 5.82077e-11, 1.16415e-09, 1, 0, 0, 0)
+layers = 2
 cast_shadow = 0
 mesh = SubResource("2")
 
-[node name="Head" type="Node3D" parent="."]
-transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, -7.25033, 3.80638, 5.18283)
-
-[node name="Pitch" type="Node3D" parent="Head"]
-
-[node name="Camera3D" type="Camera3D" parent="Head/Pitch"]
-transform = Transform3D(1, 1.82695e-10, 2.32831e-10, -8.13998e-11, 1, 4.88944e-09, 1.74623e-10, 0, 1, 0, 0, 0)
-fov = 101.1
-far = 500.0
-
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.251867, 0.967762, 8.93903e-09, 0.0660924, -0.017201, 0.997665, 0.965503, -0.251279, -0.068294, 0.0889626, 16.6875, -0.00400639)
+transform = Transform3D(0.251867, 0.967762, -1.64452e-08, 0.0660924, -0.017201, 0.997665, 0.965502, -0.251279, -0.068294, 0.0889626, 16.6875, -0.00400639)
 light_color = Color(1, 0.988235, 0.878431, 1)
 light_energy = 3.923
 light_indirect_energy = 1.813
@@ -99,51 +100,38 @@ shadow_enabled = true
 
 [node name="VoxelGI" type="VoxelGI" parent="."]
 transform = Transform3D(1, 0, -8.74228e-08, 0, -1, 0, 8.74228e-08, 0, 1, 12.6872, 0.932631, -19.8859)
-size = Vector3(458.879, 50.0623, 207.626)
+size = Vector3(535.239, 48.847, 396.841)
 data = SubResource("20")
 
-[node name="CSGBox3D" type="CSGBox3D" parent="."]
-transform = Transform3D(1100.24, 0, 0, 0, 0.211714, 0, 0, 0, 5614.96, 0.015795, -11.089, 0.00314331)
+[node name="FloorCSG" type="CSGBox3D" parent="."]
+transform = Transform3D(482.211, 0, 0, 0, 0.211714, 0, 0, 0, 335.531, 0.015795, -2.97918, 0.00314331)
 use_collision = true
 material = SubResource("StandardMaterial3D_2qtx1")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="CSGBox3D"]
-
-[node name="CSGBox3D2" type="CSGBox3D" parent="."]
+[node name="RampCSG" type="CSGBox3D" parent="."]
 transform = Transform3D(20, 0, 0, 0, 0.0861957, 10.1396, 0, -0.0506982, 17.2391, 0, 1.70045, 16.5526)
 material_override = SubResource("StandardMaterial3D_pc00p")
 use_collision = true
 
-[node name="StaticBody3D" type="StaticBody3D" parent="."]
-transform = Transform3D(54.5519, -0.000728799, 0.0531419, 0.049681, 0.797463, 0.160059, -0.0562036, -0.00246709, 51.7217, -0.639654, -0.0624347, -3.05023)
-physics_material_override = SubResource("PhysicsMaterial_5qrlh")
+[node name="CylinderRB" type="RigidBody3D" parent="."]
+transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, -0.32015, -0.974628, -12.4951)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
-transform = Transform3D(1, -7.1168e-11, 1.16415e-10, 3.54703e-11, 1, 4.65661e-10, -1.16415e-10, -2.32831e-10, 1, 0, 0, 0)
-shape = SubResource("BoxShape3D_7emmy")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D"]
-transform = Transform3D(1, -7.1168e-11, 1.16415e-10, 3.54703e-11, 1, 4.65661e-10, -1.16415e-10, -2.32831e-10, 1, 0, 0, 0)
-mesh = SubResource("BoxMesh_hwgry")
-skeleton = NodePath("../CollisionShape3D")
-
-[node name="RigidBody3D2" type="RigidBody3D" parent="."]
-transform = Transform3D(1, -0.000913893, 0.00102745, 0.000910709, 0.999995, 0.00309459, -0.00103028, -0.00309366, 0.999995, -0.641228, 2.01678, 4.74939)
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RigidBody3D2"]
-transform = Transform3D(6.26358, -6.24368e-10, 5.58794e-09, 1.60435e-09, 0.922216, 3.72529e-09, 7.45058e-09, 6.98492e-10, 4.85398, 0, 0, 0)
-mesh = SubResource("BoxMesh_ql5t3")
-skeleton = NodePath("../../RigidBody3D2")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RigidBody3D2"]
-transform = Transform3D(6.26358, -8.57881e-10, 5.58794e-09, 3.93447e-09, 0.922216, 1.11759e-08, 6.98492e-09, 1.39698e-09, 4.85398, 0, 0, 0)
-shape = SubResource("BoxShape3D_vfg1s")
-
-[node name="RigidBody3D" type="RigidBody3D" parent="."]
-transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, -0.32015, 1.47502, -0.495072)
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RigidBody3D"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="CylinderRB"]
 mesh = SubResource("CapsuleMesh_8wokw")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RigidBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CylinderRB"]
+transform = Transform3D(1, -2.07478e-11, 0, 6.19593e-12, 1, 0, 1.16415e-10, 2.32831e-10, 1, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_wk1cy")
+
+[node name="PrismRB" type="RigidBody3D" parent="."]
+transform = Transform3D(1, -0.000913893, 0.00102745, 0.000910709, 0.999995, 0.00309459, -0.00103028, -0.00309366, 0.999995, -0.641228, -1.34671, 4.74939)
+mass = 12.92
+physics_material_override = SubResource("PhysicsMaterial_8xrvn")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PrismRB"]
+transform = Transform3D(7.51046, -5.20572e-10, 1.44355e-08, -2.00089e-11, 0.552546, 1.86265e-08, 1.16415e-08, 4.65661e-10, 6.93401, 0, 0, 0)
+mesh = SubResource("BoxMesh_ql5t3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PrismRB"]
+transform = Transform3D(1, -2.59206e-11, 1.16415e-10, -1.00044e-11, 1, 2.32831e-10, 1.16415e-10, -2.32831e-10, 1, 0, 0, 0)
+shape = SubResource("BoxShape3D_vfg1s")

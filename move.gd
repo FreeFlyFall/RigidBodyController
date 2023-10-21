@@ -1,14 +1,15 @@
 extends RigidBody3D
 
-### Use the GodotPhysics physics engine
+### Use the Jolt physics engine
 
 #DevNotes to-do:
-# Newton's third law eventually breaks. Wondering whether it's a physics engine bug.
+# Fix player getting stuck in PrismRB
 
 ### Global
 @export var debug: bool
 var is_grounded: bool  # Whether the player is considered to be touching a walkable slope
 @onready var capsule = $CollisionShape3D.shape  # Capsule collision shape of the player
+@onready var capsuleMesh = $MeshInstance3D.mesh # Capsule mesh of the player
 @onready var camera = $"../Head/Pitch/Camera3D"  # Camera3D node
 @onready var head = $"../Head"  # y-axis rotation node (look left and right)
 
@@ -55,7 +56,7 @@ var ld = preload("res://Scripts//DrawLine3D.gd").new()
 func _ready():
 	# Get capsule variables
 	original_height = capsule.height
-	crouching_height = capsule.height / 2
+	crouching_height = capsule.height / 1.5
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)  # Capture and hide mouse
 	add_child(ld)  # Add line drawer
 
@@ -162,6 +163,7 @@ func _physics_process(delta):
 			current_speed_limit = crouching_speed_limit
 			if capsule.height > crouching_height:
 				capsule.height -= scale
+				capsuleMesh.height -= scale
 				camera.position.y -= move_camera
 			## Adding a force to work around some physics glitches for the moment
 			elif is_done_shrinking == false:
@@ -307,7 +309,7 @@ func _integrate_forces(state):
 	# Shotgun jump test
 	if Input.is_action_just_pressed("fire"):
 		var dir: Vector3 = camera.global_transform.basis.z  # Opposite of look direction
-		state.apply_central_force(dir * 2700)
+		state.apply_central_force(dir * 1000)
 
 
 ### Functions ###
@@ -377,7 +379,7 @@ func move(move, state):
 		state.apply_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if contacted_body != null:
-			contacted_body.apply_force(state.get_contact_collider_position(0), move * -accel)
+			contacted_body.apply_force(-move * accel * mass, state.get_contact_collider_position(0))
 	else:
 		if debug:
 			ld.DrawLine(draw_start, draw_start + move * capsule.radius, Color(0, 0, 1), 2)  # debug
@@ -414,4 +416,5 @@ func grow_capsule(is_done_shrinking, scale, move_camera):
 	is_done_shrinking = false
 	if capsule.height < original_height:
 		capsule.height += scale
+		capsuleMesh.height += scale
 		camera.position.y += move_camera
