@@ -1,9 +1,7 @@
 extends RigidBody3D
 
 ### Use the Jolt physics engine
-
-#DevNotes to-do:
-# Fix player getting stuck in PrismRB
+### To use the 3rd person camera, move the node for it above the other camera.
 
 ### Global
 @export var debug: bool
@@ -49,7 +47,7 @@ var posture  # Current posture state
 enum { WALKING, CROUCHING, SPRINTING }  # Possible values for posture
 
 ### Misc
-var ld = preload("res://Scripts//DrawLine3D.gd").new()
+var ld = preload("res://Scripts//Draw3D.gd").new()
 
 
 ### Godot notification functions ###
@@ -59,7 +57,6 @@ func _ready():
 	crouching_height = capsule.height / 1.5
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)  # Capture and hide mouse
 	add_child(ld)  # Add line drawer
-
 
 func _input(event):
 	# Player look
@@ -94,7 +91,7 @@ func _physics_process(delta):
 	# Define raycast info used with detecting groundedness
 	var raycast_list = Array()  # List of raycasts used with detecting groundedness
 	var bottom = 0.1  # Distance down from start to fire the raycast to
-	var start = (capsule.height / 2 + capsule.radius) - 0.05  # Start point down from the center of the player to start the raycast
+	var start = (capsule.height / 2) - 0.05  # Start point down from the center of the player to start the raycast
 	var cv_dist = capsule.radius - 0.1  # Cardinal vector distance.
 	var ov_dist = cv_dist / sqrt(2)  # Ordinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
 	# Get world state for collisions
@@ -148,6 +145,7 @@ func _physics_process(delta):
 		params.to = array[1]
 		params.exclude = [self]
 		var collision = direct_state.intersect_ray(params)
+		##ld.line(array[0], array[1], Color.RED, 5000)
 		# The player is grounded if any of the raycasts hit
 		if collision and is_walkable(collision.normal.y):
 			is_grounded = true
@@ -350,13 +348,13 @@ func is_below_speed_limit(nvel, vel):
 
 # Move the player
 func move(move, state):
-	var draw_start = self.position - Vector3(0, capsule.height / 2, 0) + move  # debug
+	var draw_start = self.position - Vector3(0, capsule.height / 3, 0) + move  # debug
 	if is_grounded:
 		var direct_state = get_world_3d().direct_space_state
 
 		# Raycast to get slope
 		# Start at the edge of the cylinder of the capsule in the movement direction
-		var start = (self.position - Vector3(0, capsule.height / 2, 0)) + (move * capsule.radius)
+		var start = (self.position - Vector3(0, capsule.height / 3, 0)) + (move * capsule.radius)
 		var end = start + Vector3.DOWN * 200
 		# Some Godot 3 to 4 conversion information can be found at:
 		# https://www.reddit.com/r/godot/comments/u0fboh/comment/idtoz30/?utm_source=share&utm_medium=web2x&context=3
@@ -375,14 +373,14 @@ func move(move, state):
 
 		move = cross4(move, use_normal)  # Get slope to move along based on contact
 		if debug:
-			ld.DrawLine(draw_start, draw_start + move * capsule.radius, Color(1, 0, 0), 2)  # debug
+			ld.line(draw_start, draw_start + move * capsule.radius, Color.RED, 5000)
 		state.apply_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if contacted_body != null:
 			contacted_body.apply_force(-move * accel * mass, state.get_contact_collider_position(0))
 	else:
 		if debug:
-			ld.DrawLine(draw_start, draw_start + move * capsule.radius, Color(0, 0, 1), 2)  # debug
+			ld.line(draw_start, draw_start + move * capsule.radius, Color.BLUE, 5000)
 		state.apply_central_force(move * air_control)
 
 
