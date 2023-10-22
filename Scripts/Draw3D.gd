@@ -1,14 +1,6 @@
 extends Node
 
-var meshes = {}
-
-func _process(delta):
-	for mesh_instance in meshes:
-		if Time.get_ticks_msec() > meshes[mesh_instance].expiry_time:
-			mesh_instance.queue_free()
-			meshes.erase(mesh_instance)
-
-func line(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_ms = 0) -> MeshInstance3D:
+func line(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_seconds: float = 0):
 	var mesh_instance := MeshInstance3D.new()
 	var immediate_mesh := ImmediateMesh.new()
 	var material := ORMMaterial3D.new()
@@ -19,19 +11,20 @@ func line(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_ms = 
 	immediate_mesh.surface_begin(Mesh.PRIMITIVE_LINES, material)
 	immediate_mesh.surface_add_vertex(pos1)
 	immediate_mesh.surface_add_vertex(pos2)
-	immediate_mesh.surface_end()	
+	immediate_mesh.surface_end()
 	
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
 	
 	get_tree().get_root().add_child(mesh_instance)
-	if persist_ms:
-		meshes[mesh_instance] = { expiry_time = Time.get_ticks_msec() + persist_ms }
-	
-	return mesh_instance
+	if persist_seconds:
+		await get_tree().create_timer(persist_seconds).timeout
+		mesh_instance.queue_free()
+	else:
+		return mesh_instance
 
 
-func point(pos:Vector3, radius = 0.05, color = Color.WHITE_SMOKE, persist_ms = 0) -> MeshInstance3D:
+func point(pos:Vector3, radius = 0.05, color = Color.WHITE_SMOKE, persist_seconds = 0):
 	var mesh_instance := MeshInstance3D.new()
 	var sphere_mesh := SphereMesh.new()
 	var material := ORMMaterial3D.new()
@@ -48,7 +41,8 @@ func point(pos:Vector3, radius = 0.05, color = Color.WHITE_SMOKE, persist_ms = 0
 	material.albedo_color = color
 	
 	get_tree().get_root().add_child(mesh_instance)
-	if persist_ms:
-		meshes[mesh_instance] = { expiry_time = Time.get_ticks_msec() + persist_ms }
-	
-	return mesh_instance
+	if persist_seconds:
+		await get_tree().create_timer(persist_seconds).timeout
+		mesh_instance.queue_free()
+	else:
+		return mesh_instance

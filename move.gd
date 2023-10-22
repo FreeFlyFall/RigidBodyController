@@ -47,7 +47,6 @@ var posture  # Current posture state
 enum { WALKING, CROUCHING, SPRINTING }  # Possible values for posture
 
 ### Misc
-var ld = preload("res://Scripts//Draw3D.gd").new()
 
 
 ### Godot notification functions ###
@@ -56,7 +55,6 @@ func _ready():
 	original_height = capsule.height
 	crouching_height = capsule.height / 1.5
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)  # Capture and hide mouse
-	add_child(ld)  # Add line drawer
 
 func _input(event):
 	# Player look
@@ -145,7 +143,7 @@ func _physics_process(delta):
 		params.to = array[1]
 		params.exclude = [self]
 		var collision = direct_state.intersect_ray(params)
-		##ld.line(array[0], array[1], Color.RED, 5000)
+		##Draw3D.line(array[0], array[1], Color.RED, 5000)
 		# The player is grounded if any of the raycasts hit
 		if collision and is_walkable(collision.normal.y):
 			is_grounded = true
@@ -227,7 +225,7 @@ func _integrate_forces(state):
 		and has_walkable_contact
 		and not is_jumping
 	):
-		state.apply_central_impulse(Vector3(0, 1, 0) * jump)
+		state.apply_central_impulse(Vector3(0, 1, 0) * jump * mass)
 		is_jumping = true
 		is_landing = false
 	# Apply a downward force once if the player lets go of jump to assist with landing
@@ -307,7 +305,7 @@ func _integrate_forces(state):
 	# Shotgun jump test
 	if Input.is_action_just_pressed("fire"):
 		var dir: Vector3 = camera.global_transform.basis.z  # Opposite of look direction
-		state.apply_central_force(dir * 1000)
+		state.apply_central_force(dir * 1000 * mass)
 
 
 ### Functions ###
@@ -373,14 +371,14 @@ func move(move, state):
 
 		move = cross4(move, use_normal)  # Get slope to move along based on contact
 		if debug:
-			ld.line(draw_start, draw_start + move * capsule.radius, Color.RED, 5000)
+			Draw3D.line(draw_start, draw_start + move * capsule.radius, Color.RED, 5)
 		state.apply_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if contacted_body != null:
 			contacted_body.apply_force(-move * accel * mass, state.get_contact_collider_position(0))
 	else:
 		if debug:
-			ld.line(draw_start, draw_start + move * capsule.radius, Color.BLUE, 5000)
+			Draw3D.line(draw_start, draw_start + move * capsule.radius, Color.BLUE, 5)
 		state.apply_central_force(move * air_control)
 
 
