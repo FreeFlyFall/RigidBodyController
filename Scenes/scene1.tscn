@@ -47,21 +47,9 @@ uv1_world_triplanar = true
 
 [node name="Node3D" type="Node3D"]
 
-[node name="Head" type="Node3D" parent="."]
-transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, 0, 0, -5.371)
+[node name="RBCharacterController" type="Node3D" parent="."]
 
-[node name="Pitch" type="Node3D" parent="Head"]
-
-[node name="Camera3D" type="Camera3D" parent="Head/Pitch"]
-transform = Transform3D(1, 1.82865e-10, -5.82077e-11, -8.18545e-11, 1, 5.23869e-09, 4.65661e-10, -3.49246e-10, 1, 0, 0, 0)
-cull_mask = 1048573
-fov = 101.1
-far = 500.0
-
-[node name="Camera3D3rdPerson" type="Camera3D" parent="Head/Pitch"]
-transform = Transform3D(1, 0.000455752, -0.000514785, -0.000456548, 0.999998, -0.00154694, 0.00051408, 0.00154718, 0.999998, -0.00252864, 0.510108, 5.37179)
-
-[node name="Player" type="RigidBody3D" parent="."]
+[node name="Player" type="RigidBody3D" parent="RBCharacterController"]
 transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, 0, -1.04877, -5.37123)
 axis_lock_angular_x = true
 axis_lock_angular_z = true
@@ -87,15 +75,32 @@ JUMP_THROTTLE = 0.1
 landing_assist = 1.5
 anti_slide_force = 4.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RBCharacterController/Player"]
 transform = Transform3D(1, -1.08457e-10, 1.16415e-10, 6.08225e-12, 1, -1.16415e-10, 1.16415e-10, 5.82077e-10, 1, 0, 0, 0)
 shape = SubResource("1")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Player"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RBCharacterController/Player"]
 transform = Transform3D(1, -1.37788e-10, 1.16415e-10, -5.1898e-11, 1, -3.49246e-10, 5.82077e-11, 1.16415e-09, 1, 0, 0, 0)
 layers = 2
 cast_shadow = 0
 mesh = SubResource("2")
+
+[node name="Node3D" type="Node3D" parent="RBCharacterController/Player"]
+transform = Transform3D(1, -2.08615e-11, 0, 6.30962e-12, 1, 0, 5.82077e-11, 1.16415e-10, 1, 0, 0, 0)
+
+[node name="Head" type="Node3D" parent="RBCharacterController"]
+transform = Transform3D(1, -0.000456549, 0.00051408, 0.000455753, 0.999999, 0.00154718, -0.000514786, -0.00154695, 0.999999, 1.63141e-11, 0, -5.371)
+
+[node name="Pitch" type="Node3D" parent="RBCharacterController/Head"]
+
+[node name="Camera3D" type="Camera3D" parent="RBCharacterController/Head/Pitch"]
+transform = Transform3D(1, 1.82865e-10, -5.82077e-11, -8.18545e-11, 1, 5.23869e-09, 4.65661e-10, -3.49246e-10, 1, 0, 0, 0)
+cull_mask = 1048573
+fov = 101.1
+far = 500.0
+
+[node name="Camera3D3rdPerson" type="Camera3D" parent="RBCharacterController/Head/Pitch"]
+transform = Transform3D(1, 0.000455752, -0.000514785, -0.000456548, 0.999998, -0.00154694, 0.00051408, 0.00154718, 0.999998, -0.00252864, 0.510108, 5.37179)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.170874, 0.934403, -0.312561, 0.280974, 0.257843, 0.92443, 0.944381, -0.245782, -0.218484, 0.0889626, 16.6875, -2.40315)
