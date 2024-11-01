@@ -1,104 +1,49 @@
-extends Node2D
+extends Node
 
+func line(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_ms = 0):
+	var mesh_instance := MeshInstance3D.new()
+	var immediate_mesh := ImmediateMesh.new()
+	var material := ORMMaterial3D.new()
 
-class Line:
-	var Start
-	var End
-	var LineColor
-	var InputTime
+	mesh_instance.mesh = immediate_mesh
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-	func _init(Start, End, LineColor, InputTime):
-		self.Start = Start
-		self.End = End
-		self.LineColor = LineColor
-		self.InputTime = InputTime
+	immediate_mesh.surface_begin(Mesh.PRIMITIVE_LINES, material)
+	immediate_mesh.surface_add_vertex(pos1)
+	immediate_mesh.surface_add_vertex(pos2)
+	immediate_mesh.surface_end()
+	#point(pos1, 0.01, Color.RED, persist_ms)
 
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = color
 
-var Lines = []
-var RemovedLine = false
+	return await final_cleanup(mesh_instance, persist_ms)
 
+func point(pos: Vector3, radius = 0.05, color = Color.WHITE_SMOKE, persist_ms = 0):
+	var mesh_instance := MeshInstance3D.new()
+	var sphere_mesh := SphereMesh.new()
+	var material := ORMMaterial3D.new()
 
-func _process(delta):
-	for i in range(len(Lines)):
-		Lines[i].InputTime -= delta
+	mesh_instance.mesh = sphere_mesh
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh_instance.position = pos
 
-	if len(Lines) > 0 || RemovedLine:
-		# TODO: This does NOT work!
-		_draw()  #Calls _draw
-		RemovedLine = false
+	sphere_mesh.radius = radius
+	sphere_mesh.height = radius*2
+	sphere_mesh.material = material
 
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = color
 
-func _draw():
-	var Cam = get_viewport().get_camera_3d()
-	for i in range(len(Lines)):
-		var ScreenPointStart = Cam.unproject_position(Lines[i].Start)
-		var ScreenPointEnd = Cam.unproject_position(Lines[i].End)
+	return await final_cleanup(mesh_instance, persist_ms)
 
-		#Dont draw line if either start or end is considered behind the camera
-		#this causes the line to not be drawn sometimes but avoids a bug where the
-		#line is drawn incorrectly
-		if Cam.is_position_behind(Lines[i].Start) || Cam.is_position_behind(Lines[i].End):
-			continue
-
-		draw_line(ScreenPointStart, ScreenPointEnd, Lines[i].LineColor)
-
-	#Remove lines that have timed out
-	var i = Lines.size() - 1
-	while i >= 0:
-		if Lines[i].InputTime < 0.0:
-			Lines.remove(i)
-			RemovedLine = true
-		i -= 1
-
-
-func DrawLine(Start, End, LineColor, InputTime = 0.0):
-	Lines.append(Line.new(Start, End, LineColor, InputTime))
-
-
-func DrawRay(Start, Ray, LineColor, InputTime = 0.0):
-	Lines.append(Line.new(Start, Start + Ray, LineColor, InputTime))
-
-
-func DrawCube(Center, HalfExtents, LineColor, InputTime = 0.0):
-	#Start at the 'top left'
-	var LinePointStart = Center
-	LinePointStart.x -= HalfExtents
-	LinePointStart.y += HalfExtents
-	LinePointStart.z -= HalfExtents
-
-	#Draw top square
-	var LinePointEnd = LinePointStart + Vector3(0, 0, HalfExtents * 2.0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-	LinePointStart = LinePointEnd
-	LinePointEnd = LinePointStart + Vector3(HalfExtents * 2.0, 0, 0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-	LinePointStart = LinePointEnd
-	LinePointEnd = LinePointStart + Vector3(0, 0, -HalfExtents * 2.0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-	LinePointStart = LinePointEnd
-	LinePointEnd = LinePointStart + Vector3(-HalfExtents * 2.0, 0, 0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-
-	#Draw bottom square
-	LinePointStart = LinePointEnd + Vector3(0, -HalfExtents * 2.0, 0)
-	LinePointEnd = LinePointStart + Vector3(0, 0, HalfExtents * 2.0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-	LinePointStart = LinePointEnd
-	LinePointEnd = LinePointStart + Vector3(HalfExtents * 2.0, 0, 0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-	LinePointStart = LinePointEnd
-	LinePointEnd = LinePointStart + Vector3(0, 0, -HalfExtents * 2.0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-	LinePointStart = LinePointEnd
-	LinePointEnd = LinePointStart + Vector3(-HalfExtents * 2.0, 0, 0)
-	DrawLine(LinePointStart, LinePointEnd, LineColor, InputTime)
-
-	#Draw vertical lines
-	LinePointStart = LinePointEnd
-	DrawRay(LinePointStart, Vector3(0, HalfExtents * 2.0, 0), LineColor, InputTime)
-	LinePointStart += Vector3(0, 0, HalfExtents * 2.0)
-	DrawRay(LinePointStart, Vector3(0, HalfExtents * 2.0, 0), LineColor, InputTime)
-	LinePointStart += Vector3(HalfExtents * 2.0, 0, 0)
-	DrawRay(LinePointStart, Vector3(0, HalfExtents * 2.0, 0), LineColor, InputTime)
-	LinePointStart += Vector3(0, 0, -HalfExtents * 2.0)
-	DrawRay(LinePointStart, Vector3(0, HalfExtents * 2.0, 0), LineColor, InputTime)
+func final_cleanup(mesh_instance: MeshInstance3D, persist_ms: float):
+	get_tree().get_root().add_child(mesh_instance)
+	if persist_ms == 1:
+		await get_tree().physics_frame
+		mesh_instance.queue_free()
+	elif persist_ms > 0:
+		await get_tree().create_timer(persist_ms).timeout
+		mesh_instance.queue_free()
+	else:
+		return mesh_instance
