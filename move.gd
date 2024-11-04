@@ -74,7 +74,6 @@ enum { WALKING, CROUCHING, SPRINTING }  # Possible values for posture
 var ld = preload("res://Scripts//DrawLine3D.gd").new()
 
 func draw_arrow(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_seconds = 0):
-	print(persist_seconds)
 	ld.line(pos1, pos2, color, persist_seconds)
 	ld.point(pos1, 0.0075, color, persist_seconds)
 
