@@ -7,9 +7,16 @@ extends RigidBody3D
 # Newton's third law eventually breaks. Wondering whether it's a physics engine bug.
 
 ### Global
-@export var debug: bool
+
+## Whether to draw the debug lines for forces
+@export var debug_lines: bool
+## Whether to print normals at the points of contact with the player capsule
+@export var debug_contact_normals: bool
+## Whether to print details for groundedness checks
+@export var debug_groundedness: bool
 var is_grounded: bool  # Whether the player is considered to be touching a walkable slope
 @onready var capsule = $CollisionShape3D.shape  # Capsule collision shape of the player
+@onready var capsule_mesh = $MeshInstance3D.mesh # Capsule mesh shape
 @onready var camera = $"../Head/Pitch/Camera3D"  # Camera3D node
 @onready var head = $"../Head"  # y-axis rotation node (look left and right)
 
@@ -17,18 +24,30 @@ var is_grounded: bool  # Whether the player is considered to be touching a walka
 @onready var pitch = $"../Head/Pitch"  # x-axis rotation node (look up and down)
 
 ### Integrate forces vars
-@export var accel: int  # Player acceleration force
-@export var jump: int  # Jump force multiplier
-@export var air_control: int  # Air control multiplier
-@export var turning_scale: float  # How quickly to scale movement towards a turning direction. Lower is more. # (float, 15, 120, 1)
-@export var mouse_sensitivity := 0.05  # 0.05
-@export var walkable_normal: float  # 0.35 # Walkable slope. Lower is steeper # (float, 0, 1, 0.01)
-@export var speed_to_crouch: int  # Speed to move in/out of crouching position at. # Too high causes physics glitches currently. # (int, 2, 20)
-@export var speed_limit: float  # 8 # Default speed limit of the player
-@export var crouching_speed_limit: float  # 4 # Speed to move at while crouching
-@export var sprinting_speed_limit: float  # 12 # Speed to move at while sprinting
-@export var friction_divider = 6  # Amount to divide the friction by when not grounded (prevents sticking to walls from air control)
-var upper_slope_normal: Vector3  # Stores the lowest (steepest) slope normal
+
+## Player acceleration force.
+@export var accel: int
+## Jump force multiplier.
+@export var jump: int 
+## Air control multiplier.
+@export var air_control: int
+## How quickly to scale movement toward a turning direction. Lower is more. 
+@export_range(15, 120, 1) var turning_scale: float
+## Mouse sensetivity. Default: 0.05.
+@export var mouse_sensitivity: float
+## Defines the steepest walkable slope. Lower is steeper. Default: 0.5.
+@export_range(0, 1, 0.01) var walkable_normal: float
+## The rate at which the player moves in or out of the crouching position. High values may cause physics glitches.
+@export_range(2, 20) var speed_to_crouch: int
+## Default speed limit of the player. Default: 8.
+@export var speed_limit: float = 8
+## Speed to move at while crouching. Default: 4.
+@export var crouching_speed_limit: float = 4
+## Speed to move at while sprinting. Default: 12.
+@export var sprinting_speed_limit: float = 12
+## Amount to divide the friction by when not grounded (prevents sticking to walls that may come from air control). Default: 3.
+@export var friction_divider = 3
+var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
 var lower_slope_normal: Vector3  # Stores the highest (flattest) slope normal
 var slope_normal: Vector3  # Stores normals of contact points for iteration
 var contacted_body: RigidBody3D  # Rigid body the player is currently contacting, if there is one
@@ -36,10 +55,13 @@ var player_physics_material = load("res://Physics/player.tres")
 var local_friction = player_physics_material.friction  # Editor friction value
 var is_landing: bool = true  # Whether the player has jumped and let go of jump
 var is_jumping: bool = false  # Whether the player has jumped
-@export var JUMP_THROTTLE: float  # 0.1 # Stores preference for time before the player can jump again # (float,0.01,1,0.01)
+## Stores preference for the delta time before the player can jump again.
+@export_range(0.01,1,0.01) var JUMP_THROTTLE: float  = 0.1
 var jump_throttle: float  # Variable used with jump throttling calculations
-@export var landing_assist: float  # 1.5 # Downward force to apply when letting go of space while jumping
-@export var anti_slide_force: float  # 3 # Amount of force to stop sliding with # (float,0.1,100,0.1)
+## Downward force multiplier to apply when letting go of space while jumping, in order to assist with landing.
+@export var landing_assist: float = 1.5
+## Amount of force to stop sliding with (alternative to friction)
+@export_range(0.1,100,0.1) var anti_slide_force: float = 3
 
 ### Physics process vars
 var original_height: float
@@ -90,68 +112,68 @@ func _physics_process(delta):
 
 ### Groundedness raycasts
 	is_grounded = false
-# Define raycast info used with detecting groundedness
-	#var raycast_list = Array()  # List of raycasts used with detecting groundedness
-	#var bottom = 0.1  # Distance down from start to fire the raycast to
-	#var start = (capsule.height / 2) - 0.05  # Start point down from the center of the player to start the raycast
-	#var cv_dist = capsule.radius - 0.1  # Cardinal vector distance.
-	#var ov_dist = cv_dist / sqrt(2)  # Ordinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
-	## Get world state for collisions
-	#var direct_state = get_world_3d().direct_space_state
-	#raycast_list.clear()
-	#is_grounded = false
-	## Create 9 raycasts around the player capsule.
-	## They begin towards the edge of the radius and shoot from just
-	## below the capsule, to just below the bottom bound of the capsule,
-	## with one raycast down from the center.
-	#for i in 9:
-		## Get the starting location
-		#var loc = self.position
-		## subtract a distance to get below the capsule
-		#loc.y -= start
-		## Create the distance from the capsule center in a certain direction
-		#match i:
-			## Cardinal vectors
-			#0:
-				#loc.z -= cv_dist  # N
-			#1:
-				#loc.z += cv_dist  # S
-			#2:
-				#loc.x += cv_dist  # E
-			#3:
-				#loc.x -= cv_dist  # W
-			## Ordinal vectors
-			#4:
-				#loc.z -= ov_dist  # NE
-				#loc.x += ov_dist
-			#5:
-				#loc.z += ov_dist  # SE
-				#loc.x += ov_dist
-			#6:
-				#loc.z -= ov_dist  # NW
-				#loc.x -= ov_dist
-			#7:
-				#loc.z += ov_dist  # SW
-				#loc.x -= ov_dist
-		## Copy the current location below the capsule and subtract from it
-		#var loc2 = loc
-		#loc2.y -= bottom
-		## Add the two points for this iteration to the list for the raycast
-		#raycast_list.append([loc, loc2])
-	## Check each raycast for collision, ignoring the capsule itself
-	#for array in raycast_list:
-		## Some Godot 3 to 4 conversion information can be found at:
-		## https://www.reddit.com/r/godot/comments/u0fboh/comment/idtoz30/?utm_source=share&utm_medium=web2x&context=3
-		#var params = PhysicsRayQueryParameters3D.new()
-		#params.from = array[0]
-		#params.to = array[1]
-		#params.exclude = [self]
-		#ld.line(array[0], array[1], Color.CHARTREUSE, 1)
-		#var collision = direct_state.intersect_ray(params)
-		## The player is grounded if any of the raycasts hit
-		#if collision and is_walkable(collision.normal.y):
-			#pass #is_grounded = true
-	##print("grounded: "+str(is_grounded))'''
+	#Define raycast info used with detecting groundedness
+	var raycast_list = Array()  # List of raycasts used with detecting groundedness
+	var bottom = 0.2  # Distance down from start to fire the raycast to
+	var start = (capsule.height / 2) - 0.2  # Start point down from the center of the player to start the raycast
+	var cv_dist = capsule.radius - 0.1  # Cardinal vector distance.
+	var ov_dist = cv_dist / sqrt(2)  # Ordinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
+	# Get world state for collisions
+	var direct_state = get_world_3d().direct_space_state
+	raycast_list.clear()
+	is_grounded = false
+	# Create 9 raycasts around the player capsule.
+	# They begin towards the edge of the radius and shoot from just
+	# below the capsule, to just below the bottom bound of the capsule,
+	# with one raycast down from the center.
+	for i in 9:
+		# Get the starting location
+		var loc = self.position
+		# subtract a distance to get below the capsule
+		loc.y -= start
+		# Create the distance from the capsule center in a certain direction
+		match i:
+			# Cardinal vectors
+			0:
+				loc.z -= cv_dist  # N
+			1:
+				loc.z += cv_dist  # S
+			2:
+				loc.x += cv_dist  # E
+			3:
+				loc.x -= cv_dist  # W
+			# Ordinal vectors
+			4:
+				loc.z -= ov_dist  # NE
+				loc.x += ov_dist
+			5:
+				loc.z += ov_dist  # SE
+				loc.x += ov_dist
+			6:
+				loc.z -= ov_dist  # NW
+				loc.x -= ov_dist
+			7:
+				loc.z += ov_dist  # SW
+				loc.x -= ov_dist
+		# Copy the current location below the capsule and subtract from it
+		var loc2 = loc
+		loc2.y -= bottom
+		# Add the two points for this iteration to the list for the raycast
+		raycast_list.append([loc, loc2])
+	# Check each raycast for collision, ignoring the capsule itself
+	for array in raycast_list:
+		# Some Godot 3 to 4 conversion information can be found at:
+		# https://www.reddit.com/r/godot/comments/u0fboh/comment/idtoz30/?utm_source=share&utm_medium=web2x&context=3
+		var params = PhysicsRayQueryParameters3D.new()
+		params.from = array[0]
+		params.to = array[1]
+		params.exclude = [self]
+		if debug_lines: ld.line(array[0], array[1], Color.CHARTREUSE, 1)
+		var collision = direct_state.intersect_ray(params)
+		# The player is grounded if any of the raycasts hit
+		if collision and is_walkable(collision.normal.y):
+			is_grounded = true
+	if debug_groundedness: print("Grounded Hitscans: "+str(is_grounded))
 	
 
 ### Sprinting & Crouching
@@ -165,11 +187,11 @@ func _physics_process(delta):
 			current_speed_limit = crouching_speed_limit
 			if capsule.height > crouching_height:
 				capsule.height -= capsule_scale
-				camera.position.y -= move_camera
-			## Adding a force to work around some physics glitches for the moment
+				capsule_mesh.height -= capsule_scale
 			elif is_done_shrinking == false:
-				var look_direction = head.transform.basis.z
-				self.apply_central_force(look_direction * mass * 100)
+				## Adding a force to work around some physics glitches for the moment
+				#var look_direction = head.transform.basis.z
+				#self.apply_central_force(look_direction * mass * 100)
 				is_done_shrinking = true
 		WALKING:  # Grow
 			current_speed_limit = speed_limit
@@ -201,24 +223,25 @@ func _integrate_forces(state):
 			if slope_normal.y > lower_slope_normal.y:
 				lower_slope_normal = slope_normal
 				shallowest_contact_index = i
-		#print("upper: "+str(upper_slope_normal))
-		#print("lower: "+str(lower_slope_normal))
-		# If the steepest slope contacted is more shallow than the walkable_normal, the player is grounded
-		if is_walkable(upper_slope_normal.y):
-			is_grounded = true
-			# If the shallowest contact index exists, get the velocity of the body at the contacted point
-			if shallowest_contact_index >= 0:
-				var contact_position = state.get_contact_collider_position(0)  # coords of the contact point from center of contacted body
-				var collisions = get_colliding_bodies()
-				if collisions.size() > 0 and collisions[0].get_class() == "RigidBody3D":
-					contacted_body_vel_at_point = state.get_contact_collider_velocity_at_position(0)
-					contacted_body = collisions[0]
-					#contacted_body_vel_at_point = get_contacted_body_velocity_at_point(
-					#	contacted_body, contact_position
-					#)
-		# Else if the shallowest slope normal is not walkable, the player is not grounded
+		if debug_contact_normals: print("Upper normal (shallowest): "+str(upper_slope_normal))
+		if debug_contact_normals: print("Lower normal (steepest): "+str(lower_slope_normal))
+		#### If the steepest slope contacted is more shallow than the walkable_normal, the player is grounded
+		#if is_walkable(upper_slope_normal.y):
+			#is_grounded = true
+		# If the shallowest slope normal is walkabe, the player is grounded #### Else if the shallowest slope normal is not walkable, the player is not grounded
 		if is_walkable(lower_slope_normal.y):
 			is_grounded = true
+		if debug_groundedness: print("Grounded Contacts: "+str(is_grounded))
+		# If the shallowest contact index exists, get the velocity of the body at the contacted point
+		if shallowest_contact_index >= 0:
+			var contact_position = state.get_contact_collider_position(0)  # coords of the contact point from center of contacted body
+			var collisions = get_colliding_bodies()
+			if collisions.size() > 0 and collisions[0].get_class() == "RigidBody3D":
+				contacted_body_vel_at_point = state.get_contact_collider_velocity_at_position(0)
+				contacted_body = collisions[0]
+				#contacted_body_vel_at_point = get_contacted_body_velocity_at_point(
+				#	contacted_body, contact_position
+				#)
 
 ### Jumping: Should allow the player to jump, and hold jump to jump again if they become grounded after a throttling period
 	var has_walkable_contact: bool = (
@@ -272,7 +295,6 @@ func _integrate_forces(state):
 	## move the player, adding an assisting force if turning. If above the speed limit,
 	## and facing the velocity, add a force perpendicular to the velocity and scale
 	## it based on where the player is moving in relation to the velocity.
-	##
 	# Get the angle between the velocity and current movement vector and convert it to degrees
 	var angle = nvel2.angle_to(move2)
 	var theta = rad_to_deg(angle)  # Angle between 2D look and velocity vectors
@@ -312,7 +334,7 @@ func _integrate_forces(state):
 	# Shotgun jump test
 	if Input.is_action_just_pressed("fire"):
 		var dir: Vector3 = camera.global_transform.basis.z  # Opposite of look direction
-		state.apply_central_force(dir * 2700)
+		state.apply_central_force(dir * 700)
 
 
 ### Functions ###
@@ -380,14 +402,14 @@ func move(move, state):
 			use_normal = lower_slope_normal
 
 		move = cross4(move, use_normal)  # Get slope to move along based on contact
-		if debug:
+		if debug_lines:
 			ld.line(draw_start, draw_start + move * capsule.radius, Color(1, 0, 0), 2)  # debug
 		state.apply_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if contacted_body != null:
 			pass #contacted_body.apply_force(state.get_contact_collider_position(0), move * -accel)
 	else:
-		if debug:
+		if debug_lines:
 			ld.line(draw_start, draw_start + move * capsule.radius, Color(0, 0, 1), 2)  # debug
 		state.apply_central_force(move * air_control)
 
@@ -417,9 +439,9 @@ func relative_input():
 	return move.normalized()
 
 
-#
+# Grow the capsule toward the standing height.
 func grow_capsule(is_done_shrinking, capsule_scale, move_camera):
 	is_done_shrinking = false
 	if capsule.height < original_height:
 		capsule.height += capsule_scale
-		camera.position.y += move_camera
+		capsule_mesh.height += capsule_scale
