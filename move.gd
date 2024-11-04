@@ -34,7 +34,7 @@ var is_grounded: bool  # Whether the player is considered to be touching a walka
 ## How quickly to scale movement toward a turning direction. Lower is more. 
 @export_range(15, 120, 1) var turning_scale: float
 ## Mouse sensetivity. Default: 0.05.
-@export var mouse_sensitivity: float
+@export var mouse_sensitivity: float = 0.05
 ## Defines the steepest walkable slope. Lower is steeper. Default: 0.5.
 @export_range(0, 1, 0.01) var walkable_normal: float
 ## The rate at which the player moves in or out of the crouching position. High values may cause physics glitches.
@@ -55,12 +55,12 @@ var player_physics_material = load("res://Physics/player.tres")
 var local_friction = player_physics_material.friction  # Editor friction value
 var is_landing: bool = true  # Whether the player has jumped and let go of jump
 var is_jumping: bool = false  # Whether the player has jumped
-## Stores preference for the delta time before the player can jump again.
+## Stores preference for the delta time before the player can jump again. Default: 0.1.
 @export_range(0.01,1,0.01) var JUMP_THROTTLE: float  = 0.1
 var jump_throttle: float  # Variable used with jump throttling calculations
-## Downward force multiplier to apply when letting go of space while jumping, in order to assist with landing.
+## Downward force multiplier to apply when letting go of space while jumping, in order to assist with landing. Default: 1.5.
 @export var landing_assist: float = 1.5
-## Amount of force to stop sliding with (alternative to friction)
+## Amount of force to stop sliding with (alternative to friction). Default: 3.
 @export_range(0.1,100,0.1) var anti_slide_force: float = 3
 
 ### Physics process vars
@@ -73,6 +73,10 @@ enum { WALKING, CROUCHING, SPRINTING }  # Possible values for posture
 ### Misc
 var ld = preload("res://Scripts//DrawLine3D.gd").new()
 
+func draw_arrow(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_seconds = 0):
+	print(persist_seconds)
+	ld.line(pos1, pos2, color, persist_seconds)
+	ld.point(pos1, 0.0075, color, persist_seconds)
 
 ### Godot notification functions ###
 func _ready():
@@ -168,7 +172,7 @@ func _physics_process(delta):
 		params.from = array[0]
 		params.to = array[1]
 		params.exclude = [self]
-		if debug_lines: ld.line(array[0], array[1], Color.CHARTREUSE, 1)
+		if debug_lines: ld.line(array[0], array[1], Color.CHARTREUSE, 0)
 		var collision = direct_state.intersect_ray(params)
 		# The player is grounded if any of the raycasts hit
 		if collision and is_walkable(collision.normal.y):
@@ -403,14 +407,14 @@ func move(move, state):
 
 		move = cross4(move, use_normal)  # Get slope to move along based on contact
 		if debug_lines:
-			ld.line(draw_start, draw_start + move * capsule.radius, Color(1, 0, 0), 2)  # debug
+			draw_arrow(draw_start, draw_start + move * capsule.radius, Color(1, 0, 0), 2)  # debug
 		state.apply_central_force(move * accel)
 		# Account for equal and opposite reaction when accelerating on ground
 		if contacted_body != null:
 			pass #contacted_body.apply_force(state.get_contact_collider_position(0), move * -accel)
 	else:
 		if debug_lines:
-			ld.line(draw_start, draw_start + move * capsule.radius, Color(0, 0, 1), 2)  # debug
+			draw_arrow(draw_start, draw_start + move * capsule.radius, Color(0, 0, 1), 2)  # debug
 		state.apply_central_force(move * air_control)
 
 

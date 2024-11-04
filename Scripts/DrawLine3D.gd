@@ -1,6 +1,6 @@
 extends Node
 
-func line(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_ms = 0):
+func line(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_seconds = 0):
 	var mesh_instance := MeshInstance3D.new()
 	var immediate_mesh := ImmediateMesh.new()
 	var material := ORMMaterial3D.new()
@@ -12,14 +12,13 @@ func line(pos1: Vector3, pos2: Vector3, color = Color.WHITE_SMOKE, persist_ms = 
 	immediate_mesh.surface_add_vertex(pos1)
 	immediate_mesh.surface_add_vertex(pos2)
 	immediate_mesh.surface_end()
-	#point(pos1, 0.01, Color.RED, persist_ms)
 
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
 
-	return await final_cleanup(mesh_instance, persist_ms)
+	return await final_cleanup(mesh_instance, persist_seconds)
 
-func point(pos: Vector3, radius = 0.05, color = Color.WHITE_SMOKE, persist_ms = 0):
+func point(pos: Vector3, radius = 0.05, color = Color.WHITE_SMOKE, persist_seconds = 0):
 	var mesh_instance := MeshInstance3D.new()
 	var sphere_mesh := SphereMesh.new()
 	var material := ORMMaterial3D.new()
@@ -35,15 +34,15 @@ func point(pos: Vector3, radius = 0.05, color = Color.WHITE_SMOKE, persist_ms = 
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
 
-	return await final_cleanup(mesh_instance, persist_ms)
+	return await final_cleanup(mesh_instance, persist_seconds)
 
-func final_cleanup(mesh_instance: MeshInstance3D, persist_ms: float):
+func final_cleanup(mesh_instance: MeshInstance3D, persist_seconds: float):
 	get_tree().get_root().add_child(mesh_instance)
-	if persist_ms == 1:
+	if persist_seconds == 0:
 		await get_tree().physics_frame
 		mesh_instance.queue_free()
-	elif persist_ms > 0:
-		await get_tree().create_timer(persist_ms).timeout
+	elif persist_seconds > 0:
+		await get_tree().create_timer(persist_seconds).timeout
 		mesh_instance.queue_free()
 	else:
 		return mesh_instance
