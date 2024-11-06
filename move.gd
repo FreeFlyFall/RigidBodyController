@@ -301,7 +301,7 @@ func _integrate_forces(state):
 	# Get the angle between the velocity and current movement vector and convert it to degrees
 	var angle = nvel2.angle_to(move2)
 	var theta = rad_to_deg(angle)  # Angle between 2D look and velocity vectors
-	var is_below_speed_limit: bool = is_below_speed_limit(nvel, vel)
+	var is_below_speed_limit: bool = is_below_speed_limit(vel)
 	var is_facing_velocity: bool = nvel2.dot(move2) >= 0
 	var direction: Vector3  # vector to be set 90 degrees either to the left or right of the velocity
 	var scale: float  # Scaled from 0 to 1. Used for both turn assist interpolation and vector scaling
@@ -369,14 +369,8 @@ func is_walkable(normal):
 
 
 # Whether the player is below the speed limit in the direction they're traveling
-func is_below_speed_limit(nvel, vel):
-	return (
-		(nvel.x >= 0 and vel.x < nvel.x * current_speed_limit)
-		or (nvel.x <= 0 and vel.x > nvel.x * current_speed_limit)
-		or (nvel.z >= 0 and vel.z < nvel.z * current_speed_limit)
-		or (nvel.z <= 0 and vel.z > nvel.z * current_speed_limit)
-		or (nvel.x == 0 or nvel.z == 0)
-	)
+func is_below_speed_limit(vel):
+	return vel.length() < current_speed_limit 
 
 
 # Move the player
@@ -442,7 +436,7 @@ func relative_input():
 	return move.normalized()
 
 
-# Grow the capsule toward the standing height.
+# Grow the capsule toward the standing height
 func grow_capsule(is_done_shrinking, capsule_scale, move_camera):
 	is_done_shrinking = false
 	if capsule.height < original_height:

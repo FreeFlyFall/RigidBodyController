@@ -56,9 +56,9 @@ linear_damp = 0.01
 angular_damp = 10.0
 script = ExtResource("1")
 debug_lines = true
-accel = 120
+accel = 100
 jump = 10
-air_control = 1
+air_control = 100
 turning_scale = 45.0
 walkable_normal = 0.5
 speed_to_crouch = 8
@@ -137,8 +137,8 @@ skeleton = NodePath("")
 shape = SubResource("ConcavePolygonShape3D_o3rtm")
 
 [node name="RigidBody3D3" type="RigidBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.96149, 1.59805, 8.50889)
-mass = 0.331
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.96149, 1.59805, 10.04)
+mass = 0.827
 physics_material_override = SubResource("PhysicsMaterial_en2a0")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="RigidBody3D3"]
@@ -146,6 +146,18 @@ transform = Transform3D(4.89632, 0, 0, 0, 0.420798, 0, 0, 0, 6.16068, 0, 0, 0)
 mesh = SubResource("BoxMesh_01c47")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RigidBody3D3"]
+transform = Transform3D(4.89632, 0, 0, 0, 0.420798, 0, 0, 0, 6.16068, 0, 0, 0)
+shape = SubResource("ConvexPolygonShape3D_ay55d")
+
+[node name="RigidBody3D4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.27041, 0.692766, 3.0415)
+physics_material_override = SubResource("PhysicsMaterial_en2a0")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RigidBody3D4"]
+transform = Transform3D(4.89632, 0, 0, 0, 0.420798, 0, 0, 0, 6.16068, 0, 0, 0)
+mesh = SubResource("BoxMesh_01c47")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RigidBody3D4"]
 transform = Transform3D(4.89632, 0, 0, 0, 0.420798, 0, 0, 0, 6.16068, 0, 0, 0)
 shape = SubResource("ConvexPolygonShape3D_ay55d")
 
