@@ -47,8 +47,8 @@ var is_grounded: bool  # Whether the player is considered to be touching a walka
 @export var sprinting_speed_limit: float = 12
 ## Amount to divide the friction by when not grounded (prevents sticking to walls that may come from air control). Default: 3.
 @export var friction_divider = 3
-var upper_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
-var lower_slope_normal: Vector3  # Stores the highest (flattest) slope normal
+var steepest_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
+var shallowest_slope_normal: Vector3  # Stores the highest (flattest) slope normal\
 var slope_normal: Vector3  # Stores normals of contact points for iteration
 var contacted_body: RigidBody3D  # Rigid body the player is currently contacting, if there is one
 var player_physics_material = load("res://Physics/player.tres")
@@ -208,8 +208,8 @@ func _physics_process(delta):
 
 
 func _integrate_forces(state):
-	upper_slope_normal = Vector3(0, 1, 0)
-	lower_slope_normal = Vector3(0, -1, 0)
+	steepest_slope_normal = Vector3(0, 1, 0)
+	shallowest_slope_normal = Vector3(0, -1, 0)
 	contacted_body = null  # Rigidbody
 	# Velocity of the Rigidbody the player is contacting
 	var contacted_body_vel_at_point = Vector3()
@@ -221,34 +221,39 @@ func _integrate_forces(state):
 		# Iterate over the capsule contact points and get the steepest/shallowest slopes
 		for i in state.get_contact_count():
 			slope_normal = state.get_contact_local_normal(i)
-			if slope_normal.y < upper_slope_normal.y:  # Lower normal means steeper slope
-				upper_slope_normal = slope_normal
-			if slope_normal.y > lower_slope_normal.y:
-				lower_slope_normal = slope_normal
+			if slope_normal.y < steepest_slope_normal.y:  # Lower normal means steeper slope
+				steepest_slope_normal = slope_normal
+			if slope_normal.y > shallowest_slope_normal.y:
+				shallowest_slope_normal = slope_normal
 				shallowest_contact_index = i
-		if debug_contact_normals: print("Upper normal (shallowest): "+str(upper_slope_normal))
-		if debug_contact_normals: print("Lower normal (steepest): "+str(lower_slope_normal))
+		if debug_contact_normals: print("Steepest normal: "+str(steepest_slope_normal))
+		if debug_contact_normals: print("Shallowest normal: "+str(shallowest_slope_normal))
 		#### If the steepest slope contacted is more shallow than the walkable_normal, the player is grounded
-		#if is_walkable(upper_slope_normal.y):
-			#is_grounded = true
+		####if is_walkable(steepest_slope_normal.y):
+			####is_grounded = true
 		# If the shallowest slope normal is walkabe, the player is grounded #### Else if the shallowest slope normal is not walkable, the player is not grounded
-		if is_walkable(lower_slope_normal.y):
+		if is_walkable(shallowest_slope_normal.y):
 			is_grounded = true
 		if debug_groundedness: print("Grounded Contacts: "+str(is_grounded))
 		# If the shallowest contact index exists, get the velocity of the body at the contacted point
 		if shallowest_contact_index >= 0:
 			var contact_position = state.get_contact_collider_position(0)  # coords of the contact point from center of contacted body
 			var collisions = get_colliding_bodies()
-			if collisions.size() > 0 and collisions[0].get_class() == "RigidBody3D":
-				contacted_body_vel_at_point = state.get_contact_collider_velocity_at_position(0)
-				contacted_body = collisions[0]
+			var rb_collision_idx = null
+			if collisions.size() > 0:
+				for collision_idx in range(collisions.size()):
+					if collisions[collision_idx].get_class() == "RigidBody3D":
+						rb_collision_idx = collision_idx
+			if (rb_collision_idx != null and is_walkable(steepest_slope_normal.y)):
+				contacted_body = collisions[rb_collision_idx]
+				contacted_body_vel_at_point = state.get_contact_collider_velocity_at_position(rb_collision_idx)
 				#contacted_body_vel_at_point = get_contacted_body_velocity_at_point(
 				#	contacted_body, contact_position
 				#)
 
 ### Jumping: Should allow the player to jump, and hold jump to jump again if they become grounded after a throttling period
 	var has_walkable_contact: bool = (
-		state.get_contact_count() > 0 and is_walkable(lower_slope_normal.y)
+		state.get_contact_count() > 0 and is_walkable(shallowest_slope_normal.y)
 	)  # Different from is_grounded
 	# If the player is trying to jump, the throttle expired, the player is grounded, and they're not already jumping, jump
 	# Check for is_jumping is because contact still exists at the beginning of a jump for more than one physics frame
@@ -319,7 +324,7 @@ func _integrate_forces(state):
 		move = -vel / (mass * 100 / anti_slide_force)
 		move(move, state)
 	# If not pushing into an unwalkable slope
-	elif upper_slope_normal.y > walkable_normal:
+	elif steepest_slope_normal.y > walkable_normal:
 		# If the player is below the speed limit, or is above it, but facing away from the velocity
 		if is_below_speed_limit or not is_facing_velocity:
 			# Interpolate between the movement and velocity vectors, scaling with turn assist sensitivity
@@ -364,7 +369,7 @@ func cross4(a, b):
 
 
 # Whether a slope is walkable
-func is_walkable(normal):
+func is_walkable(normal: float):
 	return normal >= walkable_normal  # Lower normal means steeper slope
 
 
@@ -393,21 +398,21 @@ func move(move, state):
 		var use_normal: Vector3
 		# If the slope in front of the player movement direction is steeper than the
 		# shallowest contact, use the steepest contact normal to calculate the movement slope
-		if hit and hit.normal.y < lower_slope_normal.y:
-			use_normal = upper_slope_normal
+		if hit and hit.normal.y < shallowest_slope_normal.y:
+			use_normal = steepest_slope_normal
 		else:
-			use_normal = lower_slope_normal
+			use_normal = shallowest_slope_normal
 
 		move = cross4(move, use_normal)  # Get slope to move along based on contact
 		if debug_lines:
-			draw_arrow(draw_start, draw_start + move * capsule.radius, Color(1, 0, 0), 2)  # debug
+			draw_arrow(draw_start, draw_start + move * capsule.radius, Color(1, 0, 0), 3)  # debug
 		state.apply_central_force(move * accel)
-		# Account for equal and opposite reaction when accelerating on ground
+		# Account for equal and opposite reaction when contacting a RigidBody
 		if contacted_body != null:
 			pass #contacted_body.apply_force(state.get_contact_collider_position(0), move * -accel)
 	else:
 		if debug_lines:
-			draw_arrow(draw_start, draw_start + move * capsule.radius, Color(0, 0, 1), 2)  # debug
+			draw_arrow(draw_start, draw_start + move * capsule.radius, Color(0, 0, 1), 3)  # debug
 		state.apply_central_force(move * air_control)
 
 
