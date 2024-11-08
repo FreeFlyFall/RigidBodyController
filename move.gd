@@ -3,6 +3,7 @@ extends RigidBody3D
 ### Use the Jolt physics engine
 
 #DevNotes to-do:
+# Separate concerns for mouse and movement input handling, collider and mesh resizing
 # Add dash with set velocity?
 # Newton's third law eventually breaks. Wondering whether it's a physics engine bug.
 
@@ -47,8 +48,8 @@ var is_grounded: bool  # Whether the player is considered to be touching a walka
 @export var sprinting_speed_limit: float = 12
 ## Amount to divide the friction by when not grounded (prevents sticking to walls that may come from air control). Default: 3.
 @export var friction_divider = 3
-var steepest_slope_normal: Vector3 # Stores the lowest (steepest) slope normal
-var shallowest_slope_normal: Vector3  # Stores the highest (flattest) slope normal\
+var steepest_slope_normal: Vector3 # Stores the lowest (steepest) normal of the contact with the player collider
+var shallowest_slope_normal: Vector3  # Stores the highest (flattest) normal of the contact with the player collider
 var slope_normal: Vector3  # Stores normals of contact points for iteration
 var contacted_body: RigidBody3D  # Rigid body the player is currently contacting, if there is one
 var player_physics_material = load("res://Physics/player.tres")
@@ -125,10 +126,8 @@ func _physics_process(delta):
 	var direct_state = get_world_3d().direct_space_state
 	raycast_list.clear()
 	is_grounded = false
-	# Create 9 raycasts around the player capsule.
-	# They begin towards the edge of the radius and shoot from just
-	# below the capsule, to just below the bottom bound of the capsule,
-	# with one raycast down from the center.
+	# Create 9 raycasts around the player capsule. They begin towards the edge of the radius and shoot from just
+	# below the capsule, to just below the bottom bound of the capsule, with one raycast down from the center.
 	for i in 9:
 		# Get the starting location
 		var loc = self.position
@@ -165,8 +164,6 @@ func _physics_process(delta):
 		raycast_list.append([loc, loc2])
 	# Check each raycast for collision, ignoring the capsule itself
 	for array in raycast_list:
-		# Some Godot 3 to 4 conversion information can be found at:
-		# https://www.reddit.com/r/godot/comments/u0fboh/comment/idtoz30/?utm_source=share&utm_medium=web2x&context=3
 		var params = PhysicsRayQueryParameters3D.new()
 		params.from = array[0]
 		params.to = array[1]
@@ -217,6 +214,7 @@ func _integrate_forces(state):
 ### Grounding, slopes, & rigidbody contact point
 	# If the player body is contacting something
 	var shallowest_contact_index: int = -1
+	
 	if state.get_contact_count() > 0:
 		# Iterate over the capsule contact points and get the steepest/shallowest slopes
 		for i in state.get_contact_count():
@@ -235,15 +233,17 @@ func _integrate_forces(state):
 		if is_walkable(shallowest_slope_normal.y):
 			is_grounded = true
 		if debug_groundedness: print("Grounded Contacts: "+str(is_grounded))
-		# If the shallowest contact index exists, get the velocity of the body at the contacted point
+		# If a rigidbody is contacted, get the velocity at contact to be used with relative velocity calculations
 		if shallowest_contact_index >= 0:
 			var contact_position = state.get_contact_collider_position(0)  # coords of the contact point from center of contacted body
 			var collisions = get_colliding_bodies()
-			var rb_collision_idx = null
+			var rb_collision_idx = null # rigidbody collision index
 			if collisions.size() > 0:
 				for collision_idx in range(collisions.size()):
 					if collisions[collision_idx].get_class() == "RigidBody3D":
 						rb_collision_idx = collision_idx
+			# Only use the relative velocity of the contacted body if it's considered walkable
+			## This prevents the relative velocity calculations from adding continual sideways force to an object
 			if (rb_collision_idx != null and is_walkable(steepest_slope_normal.y)):
 				contacted_body = collisions[rb_collision_idx]
 				contacted_body_vel_at_point = state.get_contact_collider_velocity_at_position(rb_collision_idx)
@@ -382,27 +382,20 @@ func is_below_speed_limit(vel):
 func move(move, state):
 	var draw_start = self.position - Vector3(0, capsule.height / 4, 0) + move  # debug
 	if is_grounded:
-		var direct_state = get_world_3d().direct_space_state
-
-		# Raycast to get slope
-		# Start at the edge of the cylinder of the capsule in the movement direction
-		var start = (self.position - Vector3(0, capsule.height / 4, 0)) + (move * capsule.radius)
-		var end = start + Vector3.DOWN * 200
-		# Some Godot 3 to 4 conversion information can be found at:
-		# https://www.reddit.com/r/godot/comments/u0fboh/comment/idtoz30/?utm_source=share&utm_medium=web2x&context=3
-		var params = PhysicsRayQueryParameters3D.new()
-		params.from = start
-		params.to = end
-		params.exclude = [self]
-		var hit = direct_state.intersect_ray(params)
-		var use_normal: Vector3
-		# If the slope in front of the player movement direction is steeper than the
-		# shallowest contact, use the steepest contact normal to calculate the movement slope
-		if hit and hit.normal.y < shallowest_slope_normal.y:
-			use_normal = steepest_slope_normal
-		else:
-			use_normal = shallowest_slope_normal
-
+		var use_normal = Vector3(0,1,0) # For no slope
+		var closest_contact_idx = null # The index of the contact point closest to the players intended movement vector
+		# If a contact or contacts exist(s), use the normal at the contact point closest to the player's intended movement vector (for slope detection)
+		if state.get_contact_count() > 0:
+			var smallest_angle = null
+			for i in state.get_contact_count():
+				var origin_to_contact: Vector3 = state.get_contact_local_position(i) - self.transform.origin
+				var angle = origin_to_contact.angle_to(relative_input())
+				if closest_contact_idx == null or smallest_angle == null or angle < smallest_angle:
+					closest_contact_idx = i
+					smallest_angle = angle
+		if closest_contact_idx != null:
+			use_normal = state.get_contact_local_normal(closest_contact_idx)
+			
 		move = cross4(move, use_normal)  # Get slope to move along based on contact
 		if debug_lines:
 			draw_arrow(draw_start, draw_start + move * capsule.radius, Color(1, 0, 0), 3)  # debug
