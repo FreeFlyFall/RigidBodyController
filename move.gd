@@ -63,6 +63,8 @@ var jump_throttle: float  # Variable used with jump throttling calculations
 @export var landing_assist: float = 1.5
 ## Amount of force to stop sliding with (alternative to friction). Default: 3.
 @export_range(0.1,100,0.1) var anti_slide_force: float = 3
+## Number of hitscans to use around the base of the player capsule to detect groundedness.
+@export var groundedness_hitscan_count: int = 12
 
 ### Physics process vars
 var original_height: float
@@ -116,52 +118,31 @@ func _physics_process(delta):
 
 ### Groundedness raycasts
 	is_grounded = false
-	#Define raycast info used with detecting groundedness
+	# Define raycast info used with detecting groundedness
 	var raycast_list = Array()  # List of raycasts used with detecting groundedness
-	var bottom = 0.2  # Distance down from start to fire the raycast to
+	var bottom = Vector3(0, 0.2, 0)  # Distance down from start to fire the raycast to
 	var start = (capsule.height / 2) - 0.2  # Start point down from the center of the player to start the raycast
-	var cv_dist = capsule.radius - 0.1  # Cardinal vector distance.
-	var ov_dist = cv_dist / sqrt(2)  # Ordinal vector distance. Added to 2 cardinal vectors to result in a diagonal with the same magnitude of the cardinal vectors
+	var edge_vector = Vector3(0, 0, capsule.radius - 0.1) # Initial vector toward the edge of the capsule
 	# Get world state for collisions
 	var direct_state = get_world_3d().direct_space_state
 	raycast_list.clear()
-	is_grounded = false
-	# Create 9 raycasts around the player capsule. They begin towards the edge of the radius and shoot from just
-	# below the capsule, to just below the bottom bound of the capsule, with one raycast down from the center.
-	for i in 9:
-		# Get the starting location
-		var loc = self.position
-		# subtract a distance to get below the capsule
-		loc.y -= start
-		# Create the distance from the capsule center in a certain direction
-		match i:
-			# Cardinal vectors
-			0:
-				loc.z -= cv_dist  # N
-			1:
-				loc.z += cv_dist  # S
-			2:
-				loc.x += cv_dist  # E
-			3:
-				loc.x -= cv_dist  # W
-			# Ordinal vectors
-			4:
-				loc.z -= ov_dist  # NE
-				loc.x += ov_dist
-			5:
-				loc.z += ov_dist  # SE
-				loc.x += ov_dist
-			6:
-				loc.z -= ov_dist  # NW
-				loc.x -= ov_dist
-			7:
-				loc.z += ov_dist  # SW
-				loc.x -= ov_dist
-		# Copy the current location below the capsule and subtract from it
-		var loc2 = loc
-		loc2.y -= bottom
-		# Add the two points for this iteration to the list for the raycast
-		raycast_list.append([loc, loc2])
+	
+	## Create raycasts around the player capsule. They begin towards the edge of the radius, and shoot from just
+	## below the capsule to just below the bottom bounds of the capsule, with one raycast down from the center.
+	# Get the starting location for the hitscans
+	var location: Vector3 = self.position
+	location.y -= start
+	# Create the center raycast
+	raycast_list.append([location, location - bottom])
+	# Create the raycasts out from the center of the capsule
+	for i in groundedness_hitscan_count:
+		var working_location = location
+		# The vector is rotated around the y-axis before applying to the edge vector to the centered point
+		working_location += edge_vector.rotated(Vector3(0, 1, 0), deg_to_rad((i + 1) * 360.0 / groundedness_hitscan_count))
+		# Subtract from the working location's vertical axis to get the ending point
+		var end_point = working_location - bottom
+		# Add an array, containing the two points for this iteration, to the list of raycasts
+		raycast_list.append([working_location, end_point])
 	# Check each raycast for collision, ignoring the capsule itself
 	for array in raycast_list:
 		var params = PhysicsRayQueryParameters3D.new()
@@ -239,7 +220,7 @@ func _integrate_forces(state):
 			var collisions = get_colliding_bodies()
 			var rb_collision_idx = null # rigidbody collision index
 			if collisions.size() > 0:
-				for collision_idx in range(collisions.size()):
+				for collision_idx in collisions.size():
 					if collisions[collision_idx].get_class() == "RigidBody3D":
 						rb_collision_idx = collision_idx
 			# Only use the relative velocity of the contacted body if it's considered walkable

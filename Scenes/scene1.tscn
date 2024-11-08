@@ -85,8 +85,9 @@ cull_mask = 1048573
 fov = 101.1
 far = 500.0
 
-[node name="Camera3D2" type="Camera3D" parent="Head/Pitch"]
-transform = Transform3D(1, 0.000455753, -0.000514785, -0.000456549, 0.999998, -0.00154694, 0.00051408, 0.00154718, 0.999998, 7.05381, -2.53933, -1.41326)
+[node name="Camera3D2" type="Camera3D" parent="Head/Pitch/Camera3D"]
+transform = Transform3D(1, -1.66096e-10, 1.16415e-10, 1.83263e-10, 1, 0, -5.82077e-11, 0, 1, 7.05381, -2.53933, -1.41326)
+cull_mask = 1048573
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.251867, 0.967762, 8.93903e-09, 0.0660924, -0.017201, 0.997665, 0.965503, -0.251279, -0.068294, 0.0889626, 16.6875, -0.00400639)
